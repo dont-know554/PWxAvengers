@@ -47,6 +47,17 @@
   to = "/.netlify/functions/otp"
   status = 200
 
+# Clean URLs - Remove .html extension
+[[redirects]]
+  from = "/player"
+  to = "/player.html"
+  status = 200
+
+[[redirects]]
+  from = "/index"
+  to = "/index.html"
+  status = 200
+
 # Fallback for SPA
 [[redirects]]
   from = "/*"
