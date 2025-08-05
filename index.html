@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <link rel="icon" type="image/png" sizes="any"
+    href="https://www.pw.live/favicon.ico">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <title>PW x AVENGERS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</head>
+
+<body>
+  <!-- Loading Spinner Overlay -->
+  <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+    <div class="spinner"></div>
+    <p class="loading-text">Loading...</p>
+  </div>
+
+  <!-- Modern Notification Popup -->
+  <div id="notificationPopup" class="notification-popup" style="display: none;">
+    <div class="notification-content">
+      <i class="fas fa-exclamation-triangle notification-icon"></i>
+      <span class="notification-message"></span>
+    </div>
+  </div>
+
+  <div class="container">
+    <header class="top-bar">
+      <h1 class="title">PW<i id="header-icon" class="fa-solid fa-xmark"></i>AVENGERS</h1>
+    </header>
+
+    <input type="text" id="searchInput" placeholder="🔍 Enter Batch name" />
+
+    <div class="grid" id="main"></div>
+    <div class="back-btn" id="backBtn" style="display:none;">← Back</div>
+
+    <div class="today-classes-wrapper" id="todayWrapper" style="display: none;">
+      <div class="today-classes-title">Live Classes</div>
+      <div class="today-scroll-container" id="todayScrollContainer"></div>
+    </div>
+
+
+    <div id="subjects" class="subjects-container" style="display: none;"></div>
+    <!-- Grid container for chapters -->
+    <div id="chaptersDiv" class="card-grid" style="display: none;"></div>
+
+    <!-- Load more trigger (outside grid) -->
+    <div id="chapterLoadMoreWrapper" style="display: none;">
+      <div id="loadMoreChapters" style="width: 100%; height: 1px;"></div>
+    </div>
+
+
+    <div style="text-align:center; margin-top: 20px; display:none;" id="chapterLoadMoreWrapper">
+      <button id="chapterLoadMoreBtn" class="load-more-btn">
+        Load More Chapters
+      </button>
+    </div>
+
+    <div id="lectureSection" style="display:none;">
+      <div class="lecture-tabs">
+        <button id="tab-lectures" onclick="switchLectureTab('lectures')">Lectures</button>
+        <button id="tab-notes" onclick="switchLectureTab('notes')">Notes</button>
+        <button id="tab-dppnotes" onclick="switchLectureTab('dppnotes')">DPPs</button>
+        <button id="tab-dpplecture" onclick="switchLectureTab('dpplecture')">DPP Lectures</button>
+      </div>
+      <div class="grid" id="lectureContent"></div>
+    </div>
+
+    <div id="telegramPopup" class="popup">
+      <div class="popup-content">
+        <span class="popup-close">×</span>
+        <img src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg" alt="Telegram Icon"
+          class="telegram-icon">
+        <h2>Join Our Telegram Channel!</h2>
+        <p>To Get New Updates Fast !</p>
+        <a href="https://t.me/pwXavengers" target="_blank" class="telegram-btn">Join Now</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Telegram Button -->
+  <div class="floating-telegram-btn">
+    <a href="https://t.me/pwXavengers" target="_blank" class="telegram-float-link">
+      <i class="fab fa-telegram-plane"></i>
+    </a>
+  </div>
+
+  <script>
+    // Popup functionality
+    document.addEventListener('DOMContentLoaded', () => {
+      const popup = document.getElementById('telegramPopup');
+      const closeBtn = document.querySelector('.popup-close');
+      const exploreBtn = document.getElementById('explore-btn');
+      const loadingOverlay = document.getElementById('loading-overlay');
+
+      if (popup && closeBtn) {
+        popup.style.zIndex = '1000'; // Ensure popup is on top
+
+        // Show popup on page load
+        popup.style.display = 'flex';
+
+
+
+        // Close popup when close button is clicked
+        closeBtn.addEventListener('click', () => {
+          popup.style.display = 'none';
+        });
+
+        // Close popup when clicking outside the popup content
+        window.addEventListener('click', (event) => {
+          if (event.target === popup) {
+            popup.style.display = 'none';
+          }
+        });
+      }
+    });
+  </script>
+
+  <script>
+    const API_BASE = ""; // Use relative paths for Netlify functions
+    const loadingOverlay = document.getElementById("loadingOverlay");
+    const main = document.getElementById("main");
+    const subjectsDiv = document.getElementById("subjects");
+    const chaptersDiv = document.getElementById("chapters");
+    const backBtn = document.getElementById("backBtn");
+    const searchInput = document.getElementById("searchInput");
+    const todayClassesDiv = document.getElementById("todayClasses");
+
+    let viewStack = [];
+    let allBatches = [];
+    let chapterPage = 1;
+    let chapterTotal = Infinity;
+    let chapterLoading = false;
+    let currentBatchId = "";
+    let currentSubjectSlug = "";
+    let lecturePage = 1;
+    let lectureTotal = Infinity;
+    let lectureLoading = false;
+    let currentTopicId = "";
+    let currentContentType = "vidoes";
+    let currentSubjectId = "";
+    let currentPage = 1;
+    let isLoading = false;
+    let hasMore = true;
+    let currentQuery = "";
+    
+    // Bookmark functionality
+    let favoriteBatches = JSON.parse(localStorage.getItem('favoriteBatches') || '[]');
+    
+    function isBatchBookmarked(batchId) {
+      return favoriteBatches.includes(batchId);
+    }
+    
+    function toggleBookmark(batchId, bookmarkIcon) {
+      const index = favoriteBatches.indexOf(batchId);
+      if (index === -1) {
+        // Not bookmarked, add to favorites
+        favoriteBatches.push(batchId);
+        bookmarkIcon.classList.add('bookmarked');
+      } else {
+        // Already bookmarked, remove from favorites
+        favoriteBatches.splice(index, 1);
+        bookmarkIcon.classList.remove('bookmarked');
+      }
+      
+      // Save to localStorage
+      localStorage.setItem('favoriteBatches', JSON.stringify(favoriteBatches));
+      
+      // Re-sort the batches list
+      if (allBatches.length > 0) {
+        sortAndRenderBatches();
+      }
+    }
+    
+    function sortAndRenderBatches() {
+      // Sort batches: favorites first, then others
+      const sortedBatches = [...allBatches].sort((a, b) => {
+        const aBookmarked = isBatchBookmarked(a.batchId);
+        const bBookmarked = isBatchBookmarked(b.batchId);
+        
+        // If both are either bookmarked or not, maintain original order
+        if (aBookmarked && !bBookmarked) return -1;
+        if (!aBookmarked && bBookmarked) return 1;
+        return 0;
+      });
+      
+      renderBatches(sortedBatches);
+    }
+
+    // Modern Notification Function
+    function showNotification(message, type = 'warning') {
+      const popup = document.getElementById('notificationPopup');
+      const messageEl = popup.querySelector('.notification-message');
+      const iconEl = popup.querySelector('.notification-icon');
+      
+      // Set message
+      messageEl.textContent = message;
+      
+      // Set icon based on type
+      if (type === 'warning') {
+        iconEl.className = 'fas fa-exclamation-triangle notification-icon';
+      } else if (type === 'error') {
+        iconEl.className = 'fas fa-times-circle notification-icon';
+      } else if (type === 'success') {
+        iconEl.className = 'fas fa-check-circle notification-icon';
+      }
+      
+      // Show popup
+      popup.style.display = 'block';
+      popup.classList.remove('fade-out');
+      
+      // Auto hide after 3 seconds
+      setTimeout(() => {
+        popup.classList.add('fade-out');
+        setTimeout(() => {
+          popup.style.display = 'none';
+        }, 300);
+      }, 3000);
+    }
+
+    function showBatchesView() {
+      // ✅ No pushView(). This function now ONLY renders the batches view.
+      clearAll();
+      main.style.display = "grid"; // Ensure the main grid is visible
+      // Live Classes should only appear when a batch is opened, not on homepage
+      searchInput.style.display = "block"; // Show search input on homepage
+      backBtn.style.display = "none"; // Hide back button on homepage
+
+      currentPage = 1;
+      currentQuery = "";
+      hasMore = true;
+      allBatches = [];
+      loadBatches({ reset: true });
+    }
+
+
+    function showLoader(show) {
+      loadingOverlay.style.display = show ? "flex" : "none";
+    }
+    function show(el) {
+      clearAll();
+      el.style.display = "block";
+    }
+    function clearAll() {
+      const ids = ["main", "subjects", "chaptersDiv", "lectureSection", "todayWrapper"];
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = "none";
+      });
+
+      const backBtn = document.getElementById("backBtn");
+      if (backBtn) {
+        backBtn.style.display = "block";
+        backBtn.onclick = handleBackNavigation;
+      }
+
+      // 🔻 Hide load more batches button when leaving the main batches page
+      const loadMoreBtnWrapper = document.getElementById("loadMoreBatchesWrapper");
+      if (loadMoreBtnWrapper) loadMoreBtnWrapper.style.display = "none";
+    }
+
+
+
+
+    function handleBackNavigation() {
+      // Clear current view
+      clearAll();
+
+      // Remove URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const batchId = urlParams.get("batch");
+      const subjectSlug = urlParams.get("subject");
+      const topicId = urlParams.get("topic");
+
+      if (batchId && subjectSlug && topicId) {
+        // If we were in lecture view, go back to chapters view
+        history.pushState({}, '', `?batch=${batchId}&subject=${subjectSlug}`);
+        loadChapters(batchId, subjectSlug);
+      } else if (batchId && subjectSlug) {
+        // If we were in chapters view, go back to subjects view
+        history.pushState({}, '', `?batch=${batchId}`);
+        loadSubjects(batchId);
+      } else if (batchId) {
+        // If we were in subjects view, go back to batches view
+        history.pushState({}, '', window.location.pathname);
+        showBatchesView();
+      } else {
+        // If we were in batches view, go back to batches view (shouldn't happen with back button)
+        showBatchesView();
+      }
+    }
+
+    function pushView(fn, state = {}) {
+      viewStack.push(fn);
+      // Don't push state to history since we are using URL parameters for navigation
+    }
+
+
+    function show(div) {
+      clearAll();
+      div.style.display = div.id === "lectureSection" ? "block" : "grid";
+    }
+
+    function appendCard(container, title, image, batchId, onClick) {
+      const div = document.createElement("div");
+      div.className = "card";
+      
+      // Check if this batch is bookmarked
+      const isBookmarked = isBatchBookmarked(batchId);
+      
+      div.innerHTML = `
+        ${image ? `<img src="${image}" alt="${title}" />` : ""}
+        <div class="bookmark-icon ${isBookmarked ? 'bookmarked' : ''}" data-batch-id="${batchId}">
+          <i class="fas fa-bookmark"></i>
+        </div>
+        <div class="card-title">${title}</div>
+        <button class="explore-button" onclick="event.stopPropagation();">EXPLORE</button>
+      `;
+
+      // Add click handler only to the explore button
+      const exploreBtn = div.querySelector('.explore-button');
+      exploreBtn.onclick = (event) => {
+        event.stopPropagation();
+        onClick();
+      };
+      
+      // Add click handler for bookmark icon
+      const bookmarkIcon = div.querySelector('.bookmark-icon');
+      bookmarkIcon.onclick = (event) => {
+        event.stopPropagation();
+        toggleBookmark(batchId, bookmarkIcon);
+      };
+
+      container.appendChild(div);
+    }
+
+    // 🎯 SPECIFIC BATCH IDs TO SHOW - Replace these with your desired batch IDs
+    const ALLOWED_BATCH_IDS = [
+      "6774ebb37aa1a60276d43e7c",  //neev
+      "65df241600f257001881fbbd",  //udaan
+      "6774f509dcc961a5430bb4ba", //uday2026
+      "676e5677418e84037bd6247c", // arjuna neet
+      "676e4dee1ec923bc192f38c9", // arjuna jee
+      "6774f509fd80ba9fd582cb96", // parishram
+      "65dc6fbaf5bcd500180102cd", // lakshya neet
+      "65dc6fbabb55350018d555b7", // lakshya jee
+
+      // Add more batch IDs here if needed: "another_batch_id",
+    ];
+
+    async function loadBatches({ reset = false } = {}) {
+      if (isLoading || (!hasMore && !reset)) return;
+
+      isLoading = true;
+  
+      if (reset) {
+        currentPage = 1;
+        allBatches = [];
+        main.innerHTML = "";
+        hasMore = true;
+      }
+  
+      // Show main grid first, then loading overlay
+      main.style.display = "grid";
+      showLoader(true);
+
+      try {
+        let filteredBatches = [];
+
+        if (currentQuery) {
+          // If there's a search query, use it normally
+          const query = `&q=${encodeURIComponent(currentQuery)}`;
+          const apiUrl = `${API_BASE}/api/batches?page=${currentPage}&limit=50${query}`;
+          console.log('📡 Fetching with search from:', apiUrl);
+
+          const res = await fetch(apiUrl);
+          const data = await res.json();
+
+          console.log('📦 API Response:', data);
+          console.log('📊 Total batches from API:', data.batches?.length || 0);
+
+          // Filter for allowed batches
+          filteredBatches = data.batches.filter(b => {
+            const isAllowed = ALLOWED_BATCH_IDS.includes(b._id);
+            console.log(`🔍 Batch "${b.name}" (${b._id}): ${isAllowed ? '✅ ALLOWED' : '❌ FILTERED OUT'}`);
+            return isAllowed;
+          });
+        } else {
+
+          // First, try to get batches from multiple pages to find our specific ones
+          const searchStrategies = [
+            ['uday', 'arjuna', 'yakeen', 'lakshya', 'udaan', 'neev',]
+          ];
+
+          const foundBatchIds = new Set();
+
+          for (const strategy of searchStrategies) {
+            for (const term of strategy) {
+              if (foundBatchIds.size >= ALLOWED_BATCH_IDS.length) break;
+
+              try {
+                const searchUrl = term
+                  ? `${API_BASE}/api/batches?page=1&limit=100&q=${encodeURIComponent(term)}`
+                  : `${API_BASE}/api/batches?page=${Math.floor(Math.random() * 5) + 1}&limit=100`;
+
+                const searchRes = await fetch(searchUrl);
+                const searchData = await searchRes.json();
+
+                // Check if any of our target batches are in this result
+                for (const batchId of ALLOWED_BATCH_IDS) {
+                  if (!foundBatchIds.has(batchId)) {
+                    const foundBatch = searchData.batches.find(b => b._id === batchId);
+                    if (foundBatch) {
+                      filteredBatches.push(foundBatch);
+                      foundBatchIds.add(batchId);
+                    }
+                  }
+                }
+              } catch (err) {
+                // console.error(`❌ Error in strategy search with term "${term}":`, err);
+              }
+            }
+
+            if (foundBatchIds.size >= ALLOWED_BATCH_IDS.length) {
+              // console.log('✅ Found all target batches!');
+              break;
+            }
+          }
+
+          // Log which batches we couldn't find
+          for (const batchId of ALLOWED_BATCH_IDS) {
+            if (!foundBatchIds.has(batchId)) {
+              // console.log(`❌ Could not find batch with ID: ${batchId}`);
+            }
+          }
+        }
+
+        // console.log('🎯 Final filtered batches count:', filteredBatches.length);
+
+        // Sort batches according to their order in ALLOWED_BATCH_IDS array
+        filteredBatches.sort((a, b) => {
+          const indexA = ALLOWED_BATCH_IDS.indexOf(a._id);
+          const indexB = ALLOWED_BATCH_IDS.indexOf(b._id);
+          return indexA - indexB;
+        });
+
+        const newBatches = filteredBatches.map(b => ({
+          name: b.name,
+          image: b.previewImage,
+          batchId: b._id
+        }));
+
+        if (filteredBatches.length === 0) {
+          renderNoResults();
+          hasMore = false;
+          setTimeout(() => {
+            showLoader(false);
+          }, 800);
+          // loadMoreBtnWrapper.style.display = "none"; // Removed as we no longer have this button
+        } else {
+          allBatches = reset ? newBatches : allBatches.concat(newBatches);
+          // Show batches immediately while loading overlay is still visible
+          sortAndRenderBatches();
+          // Hide loading overlay after a short delay to show the loading effect
+          setTimeout(() => {
+            showLoader(false);
+          }, 800);
+
+          // Since we're filtering, disable pagination after first load
+          hasMore = false;
+          // loadMoreBtnWrapper.style.display = "none"; // Removed as we no longer have this button
+        }
+      } catch (err) {
+        console.error("❌ Failed to load batches:", err);
+        showLoader(false);
+      } finally {
+        isLoading = false;
+      }
+    }
+
+
+
+
+    function renderBatches(batches, { append = false } = {}) {
+      if (!append) main.innerHTML = "";
+
+      todayWrapper.style.display = "none";
+      backBtn.style.display = "none";
+      searchInput.style.display = "block";
+      // loadMoreBtnWrapper.style.display = "block"; // Removed as we no longer have this button
+
+      batches.forEach(batch => {
+        appendCard(main, batch.name, batch.image, batch.batchId, () => {
+          currentBatchName = batch.name;
+          loadSubjects(batch.batchId);
+        });
+      });
+    }
+
+    function renderNoResults() {
+      main.innerHTML = `
+    <div style="text-align:center; color:#666; padding:2rem;">
+      <p>🔍 No batches found.</p>
+    </div>
+  `;
+    }
+
+    window.addEventListener("scroll", () => {
+      const nearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 100;
+
+      const isBatchesView =
+        main.style.display !== "none" &&
+        subjectsDiv.style.display === "none" &&
+        chaptersDiv.style.display === "none" &&
+        document.getElementById("lectureSection").style.display === "none" &&
+        document.getElementById("todayWrapper").style.display === "none";
+
+      if (nearBottom && isBatchesView && !isLoading) {
+        loadBatches();
+      }
+    });
+    ;
+
+
+
+
+    // 🔍 Search input listener
+    searchInput.addEventListener("input", debounce(() => {
+      currentQuery = searchInput.value.trim();
+      loadBatches({ reset: true });
+    }, 300));
+
+    // Utility: debounce
+    function debounce(fn, delay) {
+      let timeout;
+      return (...args) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => fn(...args), delay);
+      };
+    }
+
+
+    async function loadSubjects(batchId) {
+      // Update URL to reflect current view
+      history.pushState({}, '', `?batch=${batchId}`);
+      show(subjectsDiv);
+      backBtn.style.display = "block";
+
+      subjectsDiv.innerHTML = "";
+      searchInput.style.display = "none";
+      showLoader(true);
+      try {
+        const res = await fetch(`${API_BASE}/api/batch/${encodeURIComponent(batchId)}`);
+        const json = await res.json();
+        const subs = (json.data && json.data.subjects) || [];
+
+        // 1. Define appendCard FIRST
+        function appendCard(container, sub, onClick) {
+          const subjectName = sub.subject;
+          const iconUrl = sub.imageId ? `${sub.imageId.baseUrl}${sub.imageId.key}` : '';
+          const lectureCount = sub.lectureCount || 0;
+          const chapterCount = sub.tagCount || 0;
+
+          const teacher = sub.teacherIds?.[0];
+          const teacherImg = teacher?.imageId
+            ? `${teacher.imageId.baseUrl}${teacher.imageId.key}`
+            : '';
+          const teacherName = teacher ? `${teacher.firstName} ${teacher.lastName}` : 'TBA';
+
+          const card = document.createElement('div');
+          card.className = 'subject-card';
+          card.onclick = onClick;
+
+          card.innerHTML = `
+    <div class="card-header">
+      <img class="subject-icon" src="${iconUrl}" alt="${subjectName}" />
+      <div class="subject-title">${subjectName}</div>
+    </div>
+    <div class="card-details">
+      <div>🎥 <strong>${lectureCount}</strong> Lectures</div>
+      <div>📚 <strong>${chapterCount}</strong> Chapters</div>
+    </div>
+    <div class="teacher-info">
+      <img class="teacher-img" src="${teacherImg}" alt="${teacherName}" />
+      <div class="teacher-name">${teacherName}</div>
+    </div>
+  `;
+
+          container.appendChild(card);
+        }
+
+        // 2. Then call it inside your loop
+        subs.forEach(sub => {
+          appendCard(subjectsDiv, sub, () => {
+            chapterPage = 1;
+            chapterLoading = false;
+            currentSubjectId = sub.subjectId || sub._id;
+            currentSubjectName = sub.subject;
+            loadChapters(batchId, sub.slug);
+          });
+        });
+
+        const todayRes = await fetch(`${API_BASE}/api/batch/${encodeURIComponent(batchId)}/todays-schedule`);
+        const todayJson = await todayRes.json();
+        // Filter today's classes to show only live classes
+        // Filter today's classes to show only live classes
+        const todayClasses = (todayJson.data || []).filter(cls => cls.lectureType === "LIVE");
+        const todayWrapper = document.getElementById("todayWrapper");
+        const todayScrollContainer = document.getElementById("todayScrollContainer");
+
+        if (document.getElementById("subjects").style.display !== "none") {
+          todayWrapper.style.display = "block";
+        }
+
+
+        // If no live classes, show message
+        if (todayClasses.length === 0) {
+          todayScrollContainer.innerHTML = '<div style="color: var(--text-muted); padding: 20px; text-align: center; background: rgba(255, 255, 255, 0.05); border-radius: 12px; margin: 10px; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.9rem;"><i class="fas fa-calendar-times" style="margin-right: 8px; opacity: 0.7;"></i>No live classes today.</div>';
+        } else {
+          todayScrollContainer.innerHTML = ""; // Clear previous content
+        }
+
+        // Loop through today's classes
+        todayClasses.forEach(cls => {
+          const title = cls.topic || "Untitled";
+          const subject = cls.subjectId?.name || "Unknown Subject";
+          const time = new Date(cls.startTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+          const chapter = cls.tags?.[0]?.name || "General";
+          const tagLabel = cls.tag || "Upcoming";
+
+          const statusColor = tagLabel === "Live"
+            ? "#00FF88"  // Bright green for live
+            : tagLabel === "Ended"
+              ? "#FF4444"  // Red for ended
+              : "#2196F3"; // Blue for upcoming
+
+          const card = document.createElement("div");
+          card.className = "today-card";
+
+          // Required for horizontal scroll layout
+          card.style.width = "260px";
+          card.style.flex = "0 0 auto";
+
+          card.innerHTML = `
+    <div style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 5px;">${subject}</div>
+    <div class="today-card-title">${title}</div>
+    <div style="font-size: 0.85rem; margin-top: 5px;">🕒 ${time} IST</div>
+    <div style="margin-top: 5px; font-size: 0.8rem; background: var(--bg-tertiary); padding: 4px 8px; border-radius: 6px; display: inline-block;">${chapter}</div>
+    <div class="status-tag" style="position: absolute; top: 10px; right: 10px; background: ${statusColor}; color: black; font-weight: bold; font-size: 0.75rem; padding: 2px 6px; border-radius: 6px;">${tagLabel}</div>
+    <div class="today-play-button">
+          <i class="fas fa-play"></i>
+        </div>
+  `;
+
+          card.onclick = async () => {
+            if (tagLabel === "Upcoming") {
+              showNotification("Class not started yet. Please wait.", 'warning');
+              return;
+            }
+
+            const batchId = cls.batch?._id || cls.batchId?._id || cls.batchId; // support for both structures
+            const scheduleId = cls._id;
+
+            if (!batchId || !scheduleId) {
+              alert("Invalid class identifiers.");
+              return;
+            }
+
+            showLoader(true);
+
+            try {
+              const res = await fetch(`${API_BASE}/api/url?batch_id=${batchId}&schedule_id=${scheduleId}`);
+              const data = await res.json();
+
+              if (data.success && data.signed_url && data.video_id) {
+                const urlParams = new URLSearchParams({
+                  encrypted: data.signed_url,
+                  iv: data.video_id
+                });
+                if (data.pally_data && data.pally_iv) {
+                  urlParams.append('pally_data', data.pally_data);
+                  urlParams.append('pally_iv', data.pally_iv);
+                }
+                window.location.href = `player.html?${urlParams.toString()}`;
+              } else {
+                alert("⚠️ Failed to get live stream URL.");
+              }
+            } catch (err) {
+              console.error("Live stream fetch error:", err);
+              alert("⚠️ Error getting live stream URL.");
+            } finally {
+              showLoader(false);
+            }
+          };
+
+
+          todayScrollContainer.appendChild(card);
+        });
+      } catch (err) {
+        console.error("Failed to load subjects or todayclass:", err);
+      } finally {
+        showLoader(false);
+      }
+    }
+
+    async function loadChapters(batchId, subjectSlug) {
+      const chaptersDiv = document.getElementById("chaptersDiv");
+      const oldWrapper = document.getElementById("chapterLoadMoreWrapper");
+      if (oldWrapper) oldWrapper.remove();
+
+      if (chapterLoading) return;
+
+      // Update URL to reflect current view
+      history.pushState({}, '', `?batch=${batchId}&subject=${subjectSlug}`);
+      chaptersDiv.innerHTML = "";
+      clearAll();
+      document.getElementById("subjects").style.display = "none";
+      searchInput.style.display = "none"; // Hide search input when viewing chapters
+
+      chapterLoading = true;
+      showLoader(true);
+
+      currentBatchId = batchId;
+      currentSubjectSlug = subjectSlug;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/batch/${batchId}/subject/${subjectSlug}/topics`);
+        const result = await res.json();
+
+        const chapters = result.data || [];
+
+        if (chapters.length === 0) {
+          const emptyMsg = document.createElement("div");
+          emptyMsg.className = "empty-state";
+          emptyMsg.innerText = "No chapters found.";
+          chaptersDiv.appendChild(emptyMsg);
+        } else {
+          chapters.forEach(ch => {
+            const card = document.createElement("div");
+            card.className = "chapter-card";
+            card.innerHTML = `
+          <div class="chapter-title">${ch.name}</div>
+          <div class="chapter-meta">
+            <div><i class="fas fa-video"></i> ${ch.lectureVideos || 0} Lectures</div>
+            <div><i class="fas fa-file-alt"></i> ${ch.notes || 0} Notes</div>
+            <div><i class="fas fa-book"></i> ${ch.exercises || 0} DPPs</div>
+          </div>
+        `;
+            card.addEventListener("click", () => {
+              if (!ch._id) {
+                alert("Chapter ID missing. Cannot load lectures.");
+                return;
+              }
+              pushView(() => loadChapters(batchId, subjectSlug));
+              currentTopicName = ch.name;
+              loadLecturesContent(batchId, subjectSlug, ch._id);
+            });
+
+            chaptersDiv.appendChild(card);
+          });
+        }
+
+      } catch (err) {
+        console.error("Failed to load chapters:", err);
+        const errorMsg = document.createElement("div");
+        errorMsg.className = "error-state";
+        errorMsg.innerText = "Failed to load chapters. Please try again.";
+        chaptersDiv.appendChild(errorMsg);
+      } finally {
+        showLoader(false);
+        show(chaptersDiv);
+        chapterLoading = false;
+      }
+    }
+
+    async function loadLecturesContent(batchId, subjectSlug, topicId, contentType = "vidoes") {
+      if (lectureLoading) return;
+      lectureLoading = true;
+
+      history.pushState({}, '', `?batch=${batchId}&subject=${subjectSlug}&topic=${topicId}&type=${contentType}`);
+      document.getElementById("lectureContent").innerHTML = "";
+      searchInput.style.display = "none"; // Hide search input when viewing lectures
+
+      show(document.getElementById("lectureSection"));
+
+      // Set default active tab based on content type
+      const tabMap = {
+        "vidoes": "lectures",
+        "notes": "notes",
+        "DppNotes": "dppnotes",
+        "DppVideos": "dpplecture"
+      };
+
+      const activeTab = tabMap[contentType] || "lectures";
+
+      // Remove active class from all tabs
+      ["lectures", "notes", "dppnotes", "dpplecture"].forEach(t => {
+        document.getElementById("tab-" + t).classList.remove("active");
+      });
+
+      // Set the appropriate tab as active
+      document.getElementById("tab-" + activeTab).classList.add("active");
+
+      showLoader(true);
+
+      currentBatchId = batchId;
+      currentSubjectSlug = subjectSlug;
+      currentTopicId = topicId;
+      currentContentType = contentType;
+
+      const url = `${API_BASE}/api/batch/${batchId}/subject/${subjectSlug}/topic/${topicId}/all-contents?type=${contentType}`;
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        const items = data.data || [];
+
+        const lectureContent = document.getElementById("lectureContent");
+        if (items.length === 0) {
+          lectureContent.innerHTML = `<div style="color: var(--text-muted); padding: 20px; text-align: center; background: rgba(255, 255, 255, 0.05); border-radius: 12px; margin: 10px; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.9rem;"><i class="fas fa-folder-open" style="margin-right: 8px; opacity: 0.7;"></i>No content found.</div>`;
+          return;
+        }
+
+        // Flatten homeworkIds to get all content items
+        let allContentItems = [];
+        items.forEach(item => {
+          if (item.homeworkIds && item.homeworkIds.length > 0) {
+            allContentItems.push(...item.homeworkIds);
+          } else {
+            allContentItems.push(item);
+          }
+        });
+
+        allContentItems.forEach(item => {
+          const div = document.createElement("div");
+          div.className = "card";
+
+          if (contentType === "notes" || contentType === "DppNotes") {
+            let topicTitle = "Untitled Note";
+            if (item.topic) {
+              topicTitle = item.topic;
+            } else if (item.homeworkIds?.[0]?.topic) {
+              topicTitle = item.homeworkIds[0].topic;
+            }
+            const scheduleId = item._id;
+            const isNote = contentType === "notes";
+            const cardClass = isNote ? "note-card" : "dpp-card";
+            const iconClass = isNote ? "note-icon" : "dpp-icon";
+            const contentClass = isNote ? "note-content" : "dpp-content";
+            const titleClass = isNote ? "note-title" : "dpp-title";
+            const labelClass = isNote ? "note-label" : "dpp-label";
+            const arrowClass = isNote ? "note-arrow" : "dpp-arrow";
+            const iconEmoji = isNote ? "📝" : "📋";
+            const labelText = isNote ? "NOTE" : "DPP";
+
+            div.className = cardClass;
+            div.innerHTML = `
+    <div class="${contentClass === "note-content" ? "note-card-content" : "dpp-card-content"}">
+      <div class="${iconClass}">
+        ${iconEmoji}
+      </div>
+      <div class="${contentClass}">
+        <div class="${titleClass}">${topicTitle}</div>
+        <div class="${labelClass}">${labelText}</div>
+      </div>
+      <div class="${arrowClass}">
+        >
+      </div>
+    </div>
+  `;
+
+            div.onclick = () => {
+              fetchAndOpenAttachments(currentBatchId, currentSubjectSlug, scheduleId);
+            };
+          }
+          else {
+            const vid = item.videoDetails || item;
+            const title = item.topic || vid.name || "Untitled Video";
+            const image = vid.image || vid.thumbnail || "";
+            const mediaUrl = vid.hls_url || item.url || "";
+            const duration = vid.duration || "00:00:00";
+
+            const startTime = new Date(item.startTime);
+            const formattedDate = startTime.toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric'
+            });
+
+            div.className = "lecture-card";
+            div.innerHTML = `
+    <div class="lecture-card-inner">
+      <div class="lecture-thumbnail">
+        <img src="${image}" alt="${title}" class="lecture-image" />
+        <div class="lecture-play-button">
+          <i class="fas fa-play"></i>
+        </div>
+      </div>
+      <div class="lecture-info">
+        <div class="lecture-meta">
+          <span class="lecture-date">${formattedDate}</span>
+          <span class="lecture-duration">${duration}</span>
+        </div>
+        <h3 class="lecture-title">${title}</h3>
+      </div>
+    </div>
+  `;
+            div.onclick = async () => {
+              showLoader(true);
+              try {
+                let finalUrl = mediaUrl;
+                const isYouTube = finalUrl && (finalUrl.includes('youtube.com') || finalUrl.includes('youtu.be'));
+                if (isYouTube) return window.open(finalUrl, '_blank');
+
+                const realVid = item.videoDetails || item;
+                const params = new URLSearchParams({
+                  batch: currentBatchId || 'Unknown Batch',
+                  subject: currentSubjectSlug || 'Unknown Subject',
+                  topic: currentTopicId || 'General',
+                  title: item.topic || realVid.name || ''
+                });
+
+                const resp = await fetch(`${API_BASE}/api/video/stream-info?${params}`);
+                const data = await resp.json();
+
+                if (data.youtube && data.videoUrl) {
+                  window.open(data.videoUrl, '_blank');
+                  return;
+                }
+
+                if (data.success && data.signed_url && data.video_id) {
+                  const urlParams = new URLSearchParams({
+                    encrypted: data.signed_url,
+                    iv: data.video_id
+                  });
+                  window.open(`player.html?${urlParams}`, '_blank');
+                  return;
+                }
+
+                const scheduleId = item._id;
+                const res = await fetch(`${API_BASE}/api/url?batch_id=${currentBatchId}&schedule_id=${scheduleId}`);
+                const altData = await res.json();
+
+                if (altData.success && altData.signed_url && altData.video_id) {
+                  const urlParams = new URLSearchParams({
+                    encrypted: altData.signed_url,
+                    iv: altData.video_id
+                  });
+                  if (altData.pally_data && altData.pally_iv) {
+                    urlParams.append('pally_data', altData.pally_data);
+                    urlParams.append('pally_iv', altData.pally_iv);
+                  }
+                  window.location.href = `player.html?${urlParams.toString()}`;
+                } else {
+                  alert("⚠️ Video not available from either source.");
+                }
+              } catch (err) {
+                console.error("Video load failed:", err);
+                alert("⚠️ Failed to load video.");
+              } finally {
+                showLoader(false);
+              }
+            };
+          }
+          lectureContent.appendChild(div);
+        });
+      } catch (err) {
+        console.error("Failed to load content:", err);
+      } finally {
+        lectureLoading = false;
+        showLoader(false);
+      }
+    }
+    async function fetchAndOpenAttachments(batchId, subjectSlug, scheduleId) {
+      try {
+        showLoader(true);
+        const res = await fetch(`${API_BASE}/api/batch/${batchId}/subject/${subjectSlug}/schedule/${scheduleId}/content`);
+        const data = await res.json();
+
+        if (!data.data || !data.data.length) {
+          alert("No content found.");
+          return;
+        }
+
+        const attachments = data.data.flatMap(item =>
+          (item.homeworkIds || []).flatMap(hw =>
+            (hw.attachmentIds || [])
+          )
+        );
+
+        if (!attachments.length) {
+          alert("No attachments found.");
+          return;
+        }
+
+        attachments.forEach(att => {
+          const fileUrl = `${att.baseUrl}${att.key}`;
+          window.open(fileUrl, '_blank');
+        });
+
+      } catch (err) {
+        console.error("Failed to fetch schedule content:", err);
+        alert("Error loading attachments.");
+      } finally {
+        showLoader(false);
+      }
+    }
+
+    function switchLectureTab(tab) {
+      const typeMap = {
+        lectures: "vidoes",
+        notes: "notes",
+        dppnotes: "DppNotes",
+        dpplecture: "DppVideos"
+      };
+
+      currentContentType = typeMap[tab] || "vidoes";
+
+
+      ["lectures", "notes", "dppnotes", "dpplecture"].forEach(t => {
+        document.getElementById("tab-" + t).classList.remove("active");
+      });
+      document.getElementById("tab-" + tab).classList.add("active");
+
+      loadLecturesContent(currentBatchId, currentSubjectSlug, currentTopicId, currentContentType);
+    }
+
+    backBtn.onclick = () => {
+      history.back(); // ✅ triggers popstate event
+    };
+
+
+    searchInput.addEventListener("input", () => {
+      const keyword = searchInput.value.toLowerCase();
+      const filtered = allBatches.filter(b => b.name.toLowerCase().includes(keyword));
+      renderBatches(filtered);
+    });
+
+
+
+
+    // Disable right-click and DevTools
+    document.addEventListener('contextmenu', event => event.preventDefault());
+    document.addEventListener('keydown', function (event) {
+      if (
+        event.key === "F12" ||
+        (event.ctrlKey && event.shiftKey && (event.key === 'I' || event.key === 'J')) ||
+        (event.ctrlKey && event.key === 'U') ||
+        (event.ctrlKey && event.shiftKey && event.key === 'C') ||
+        (event.ctrlKey && event.key === 'A') ||
+        (event.ctrlKey && event.key === 'S') ||
+        (event.ctrlKey && event.key === 'P')
+      ) {
+        event.preventDefault();
+      }
+    });
+    window.addEventListener("popstate", () => {
+      if (viewStack.length > 0) {
+        const restoreView = viewStack.pop(); // ✅ Pop the function for the view we are returning TO.
+        if (typeof restoreView === 'function') {
+          restoreView(); // ✅ Execute it.
+        }
+      }
+    });
+    document.addEventListener("DOMContentLoaded", () => {
+      // Check URL parameters to restore the correct view on page load
+      const urlParams = new URLSearchParams(window.location.search);
+      const batchId = urlParams.get("batch");
+      const subjectSlug = urlParams.get("subject");
+      const topicId = urlParams.get("topic");
+      const contentType = urlParams.get("type") || "vidoes";
+
+      if (batchId && subjectSlug && topicId) {
+        // If batch, subject, and topic are in URL, show lecture content view
+        loadLecturesContent(batchId, subjectSlug, topicId, contentType);
+      } else if (batchId && subjectSlug) {
+        // If both batch and subject are in URL, show chapters view
+        loadChapters(batchId, subjectSlug);
+      } else if (batchId) {
+        // If only batch is in URL, show subjects view
+        loadSubjects(batchId);
+      } else {
+        // Otherwise, show batches view (default)
+        showBatchesView();
+      }
+    });
+
+
+  </script>
+</body>
+
+</html>

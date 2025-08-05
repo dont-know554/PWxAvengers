@@ -1,0 +1,54 @@
+[build]
+  functions = "netlify/functions"
+  publish = "."
+
+[[redirects]]
+  from = "/api/batches"
+  to = "/.netlify/functions/batches"
+  status = 200
+
+[[redirects]]
+  from = "/api/url"
+  to = "/.netlify/functions/url"
+  status = 200
+
+[[redirects]]
+  from = "/api/batch/:batchId"
+  to = "/.netlify/functions/batch"
+  status = 200
+
+[[redirects]]
+  from = "/api/batch/:batchId/subject/:subjectSlug/schedule/:scheduleId/content"
+  to = "/.netlify/functions/batch-content"
+  status = 200
+
+[[redirects]]
+  from = "/api/batch/:batchId/todays-schedule"
+  to = "/.netlify/functions/todays-schedule"
+  status = 200
+
+[[redirects]]
+  from = "/api/batch/:batchId/subject/:subjectSlug/topics"
+  to = "/.netlify/functions/topics"
+  status = 200
+
+[[redirects]]
+  from = "/api/batch/:batchId/subject/:subjectSlug/topic/:topicId/all-contents"
+  to = "/.netlify/functions/all-contents"
+  status = 200
+
+[[redirects]]
+  from = "/api/video/stream-info"
+  to = "/.netlify/functions/stream-info"
+  status = 200
+
+[[redirects]]
+  from = "/api/otp"
+  to = "/.netlify/functions/otp"
+  status = 200
+
+# Fallback for SPA
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
