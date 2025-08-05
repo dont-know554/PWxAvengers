@@ -1238,6 +1238,32 @@ console.profileEnd = function() {};
 console.timeStamp = function() {};
 console.clear = function() {};
 </script>
+<script>
+  const redirectUrl = 'https://t.me/pwXavengers';
+  const checkInterval = 500;
+  let hasRedirected = false;
+  
+  function isDevToolsOpen() {
+      // Higher threshold to avoid false positives from browser UI or extensions
+      const widthThreshold = window.outerWidth - window.innerWidth > 800;
+      const heightThreshold = window.outerHeight - window.innerHeight > 800;
+      return widthThreshold || heightThreshold;
+  }
+  
+  function checkDevTools() {
+      if (isDevToolsOpen() && !hasRedirected) {
+          hasRedirected = true;
+          window.location.replace(redirectUrl);
+      }
+  }
+  
+  // Delay initial check to allow window sizes to stabilize
+  setTimeout(() => {
+      checkDevTools();
+      // Start periodic checks after initial delay
+      setInterval(checkDevTools, checkInterval);
+  }, 1000);
+      </script>
 
   <script>
     class ModernVideoPlayer {
