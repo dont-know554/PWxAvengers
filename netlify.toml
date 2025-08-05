@@ -53,8 +53,3 @@
   to = "/player.html"
   status = 200
 
-# Fallback for SPA
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
