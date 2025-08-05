@@ -691,7 +691,7 @@
                   urlParams.append('pally_data', data.pally_data);
                   urlParams.append('pally_iv', data.pally_iv);
                 }
-                window.location.href = `player.html?${urlParams.toString()}`;
+                window.location.href = `player?${urlParams.toString()}`;
               } else {
                 alert("⚠️ Failed to get live stream URL.");
               }
@@ -943,7 +943,7 @@
                     encrypted: data.signed_url,
                     iv: data.video_id
                   });
-                  window.open(`player.html?${urlParams}`, '_blank');
+                  window.open(`player?${urlParams}`, '_blank');
                   return;
                 }
 
