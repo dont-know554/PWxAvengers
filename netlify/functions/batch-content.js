@@ -24,8 +24,6 @@ exports.handler = async (event, context) => {
     const subjectSlug = pathSegments[5];
     const scheduleId = pathSegments[7];
     
-    console.log('PW x AVENGERS NETLIFY DEBUG - Received parameters:', { batchId, subjectSlug, scheduleId, path: event.path });
-    
     const apiUrl = `https://pw-api1-ab3091004643.herokuapp.com/api/batch/${batchId}/subject/${subjectSlug}/schedule/${scheduleId}/content`;
     
     // Forward the request to the actual API
