@@ -569,36 +569,6 @@ input[type="text"]::placeholder {
     gap: 7px;
 }
 
-/* Responsive adjustments for chapter meta on medium screens */
-@media (max-width: 768px) {
-    .chapter-meta {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
-    }
-    
-    .chapter-meta div {
-        width: 100%;
-        justify-content: space-between;
-    }
-}
-
-/* Responsive adjustments for chapter meta on small screens */
-@media (max-width: 480px) {
-    .chapter-meta {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 6px;
-        font-size: 0.85rem;
-    }
-    
-    .chapter-meta div {
-        flex-direction: row;
-        justify-content: space-between;
-        width: 100%;
-    }
-}
-
 #lectureContent {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
