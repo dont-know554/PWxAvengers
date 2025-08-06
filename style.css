@@ -1725,3 +1725,36 @@ body {
 .status-tag {
     box-shadow: 0 0 10px rgba(0, 140, 255, 0.4) !important;
 }
+
+/* Video Watermark Overlay */
+.video-watermark-top {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.6rem;
+    font-weight: 600;
+    font-family: 'Poppins', sans-serif;
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    z-index: 2;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.video-watermark-top .watermark-logo {
+    width: 15px !important;
+    height: 15px !important;
+    border-radius: 50%;
+    object-fit: cover;
+    min-width: 15px;
+    min-height: 15px;
+    max-width: 15px;
+    max-height: 15px;
+    position: static !important;
+}
