@@ -921,6 +921,7 @@ console.clear = function() {};
               topicTitle = item.homeworkIds[0].topic;
             }
             const scheduleId = item._id;
+            console.log('PW x AVENGERS DEBUG - Content item scheduleId:', scheduleId, 'Item:', item);
             const isNote = contentType === "notes";
             const cardClass = isNote ? "note-card" : "dpp-card";
             const iconClass = isNote ? "note-icon" : "dpp-icon";
@@ -1054,8 +1055,10 @@ console.clear = function() {};
     async function fetchAndOpenAttachments(batchId, subjectSlug, scheduleId) {
       try {
         showLoader(true);
+        console.log('PW x AVENGERS DEBUG - Fetching attachments for:', { batchId, subjectSlug, scheduleId });
         const res = await fetch(`${API_BASE}/api/batch/${batchId}/subject/${subjectSlug}/schedule/${scheduleId}/content`);
         const data = await res.json();
+        console.log('PW x AVENGERS DEBUG - API Response:', data);
 
         if (!data.data || !data.data.length) {
           alert("No content found.");
