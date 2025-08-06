@@ -947,9 +947,11 @@ console.clear = function() {};
     </div>
   `;
 
-            div.onclick = () => {
-              fetchAndOpenAttachments(currentBatchId, currentSubjectSlug, scheduleId);
-            };
+            div.onclick = ((itemScheduleId) => {
+              return () => {
+                fetchAndOpenAttachments(currentBatchId, currentSubjectSlug, itemScheduleId);
+              };
+            })(scheduleId);
           }
           else {
             const vid = item.videoDetails || item;

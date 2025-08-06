@@ -20,9 +20,9 @@ exports.handler = async (event, context) => {
   try {
     // Extract parameters from the path
     const pathSegments = event.path.split('/');
-    const batchId = pathSegments[4];
+    const batchId = pathSegments[3];
     const subjectSlug = pathSegments[5];
-    const scheduleId = pathSegments[6];
+    const scheduleId = pathSegments[7];
     
     const apiUrl = `https://pw-api1-ab3091004643.herokuapp.com/api/batch/${batchId}/subject/${subjectSlug}/schedule/${scheduleId}/content`;
     
