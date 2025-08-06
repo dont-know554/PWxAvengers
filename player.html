@@ -1632,7 +1632,11 @@ console.clear = function() {};
 
             // Fetch ClearKey from OTP API
             try {
-              const otpRes = await fetch(`/api/otp?mpd_url=${encodeURIComponent(this.videoURL)}`);
+              const otpRes = await fetch(`/api/otp?mpd_url=${encodeURIComponent(this.videoURL)}`, {
+                headers: {
+                  'Authorization': 'Bearer ' + API_AUTH_TOKEN
+                }
+              });
               const otpData = await otpRes.json();
               console.log("OTP API response:", otpData);
 

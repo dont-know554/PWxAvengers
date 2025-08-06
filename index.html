@@ -456,7 +456,11 @@ console.clear = function() {};
           const apiUrl = `${API_BASE}/api/batches?page=${currentPage}&limit=50${query}`;
           console.log('📡 Fetching with search from:', apiUrl);
 
-          const res = await fetch(apiUrl);
+          const res = await fetch(apiUrl, {
+            headers: {
+              'Authorization': 'Bearer ' + API_AUTH_TOKEN
+            }
+          });
           const data = await res.json();
 
           console.log('📦 API Response:', data);
@@ -486,7 +490,11 @@ console.clear = function() {};
                   ? `${API_BASE}/api/batches?page=1&limit=100&q=${encodeURIComponent(term)}`
                   : `${API_BASE}/api/batches?page=${Math.floor(Math.random() * 5) + 1}&limit=100`;
 
-                const searchRes = await fetch(searchUrl);
+                const searchRes = await fetch(searchUrl, {
+                  headers: {
+                    'Authorization': 'Bearer ' + API_AUTH_TOKEN
+                  }
+                });
                 const searchData = await searchRes.json();
 
                 // Check if any of our target batches are in this result
@@ -633,7 +641,11 @@ console.clear = function() {};
       searchInput.style.display = "none";
       showLoader(true);
       try {
-        const res = await fetch(`${API_BASE}/api/batch/${encodeURIComponent(batchId)}`);
+        const res = await fetch(`${API_BASE}/api/batch/${encodeURIComponent(batchId)}`, {
+          headers: {
+            'Authorization': 'Bearer ' + API_AUTH_TOKEN
+          }
+        });
         const json = await res.json();
         const subs = (json.data && json.data.subjects) || [];
 
@@ -690,7 +702,11 @@ console.clear = function() {};
           });
         });
 
-        const todayRes = await fetch(`${API_BASE}/api/batch/${encodeURIComponent(batchId)}/todays-schedule`);
+        const todayRes = await fetch(`${API_BASE}/api/batch/${encodeURIComponent(batchId)}/todays-schedule`, {
+          headers: {
+            'Authorization': 'Bearer ' + API_AUTH_TOKEN
+          }
+        });
         const todayJson = await todayRes.json();
         // Filter today's classes to show only live classes
         // Filter today's classes to show only live classes
@@ -759,7 +775,11 @@ console.clear = function() {};
             showLoader(true);
 
             try {
-              const res = await fetch(`${API_BASE}/api/url?batch_id=${batchId}&schedule_id=${scheduleId}`);
+              const res = await fetch(`${API_BASE}/api/url?batch_id=${batchId}&schedule_id=${scheduleId}`, {
+                headers: {
+                  'Authorization': 'Bearer ' + API_AUTH_TOKEN
+                }
+              });
               const data = await res.json();
 
               if (data.success && data.signed_url && data.video_id) {
@@ -814,7 +834,11 @@ console.clear = function() {};
       currentSubjectSlug = subjectSlug;
 
       try {
-        const res = await fetch(`${API_BASE}/api/batch/${batchId}/subject/${subjectSlug}/topics`);
+        const res = await fetch(`${API_BASE}/api/batch/${batchId}/subject/${subjectSlug}/topics`, {
+          headers: {
+            'Authorization': 'Bearer ' + API_AUTH_TOKEN
+          }
+        });
         const result = await res.json();
 
         const chapters = result.data || [];
@@ -898,7 +922,11 @@ console.clear = function() {};
       const url = `${API_BASE}/api/batch/${batchId}/subject/${subjectSlug}/topic/${topicId}/all-contents?type=${contentType}`;
 
       try {
-        const res = await fetch(url);
+        const res = await fetch(url, {
+          headers: {
+            'Authorization': 'Bearer ' + API_AUTH_TOKEN
+          }
+        });
         const data = await res.json();
         const items = data.data || [];
 
@@ -1020,7 +1048,11 @@ console.clear = function() {};
                   title: item.topic || realVid.name || ''
                 });
 
-                const resp = await fetch(`${API_BASE}/api/video/stream-info?${params}`);
+                const resp = await fetch(`${API_BASE}/api/video/stream-info?${params}`, {
+                  headers: {
+                    'Authorization': 'Bearer ' + API_AUTH_TOKEN
+                  }
+                });
                 const data = await resp.json();
 
                 if (data.youtube && data.videoUrl) {
@@ -1038,7 +1070,11 @@ console.clear = function() {};
                 }
 
                 const scheduleId = item._id;
-                const res = await fetch(`${API_BASE}/api/url?batch_id=${currentBatchId}&schedule_id=${scheduleId}`);
+                const res = await fetch(`${API_BASE}/api/url?batch_id=${currentBatchId}&schedule_id=${scheduleId}`, {
+                  headers: {
+                    'Authorization': 'Bearer ' + API_AUTH_TOKEN
+                  }
+                });
                 const altData = await res.json();
 
                 if (altData.success && altData.signed_url && altData.video_id) {
