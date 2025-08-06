@@ -899,17 +899,26 @@ console.clear = function() {};
           return;
         }
 
-        // Flatten homeworkIds to get all content items
-        let allContentItems = [];
+        // Process items while preserving parent scheduleId for homework items
+        let processedItems = [];
         items.forEach(item => {
           if (item.homeworkIds && item.homeworkIds.length > 0) {
-            allContentItems.push(...item.homeworkIds);
+            // For each homework item, preserve the parent item's _id as scheduleId
+            item.homeworkIds.forEach(hwItem => {
+              processedItems.push({
+                ...hwItem,
+                scheduleId: item._id  // Parent item's _id is the scheduleId
+              });
+            });
           } else {
-            allContentItems.push(item);
+            processedItems.push({
+              ...item,
+              scheduleId: item._id
+            });
           }
         });
 
-        allContentItems.forEach(item => {
+        processedItems.forEach(item => {
           const div = document.createElement("div");
           div.className = "card";
 
@@ -920,7 +929,7 @@ console.clear = function() {};
             } else if (item.homeworkIds?.[0]?.topic) {
               topicTitle = item.homeworkIds[0].topic;
             }
-            const scheduleId = item._id;
+            const scheduleId = item.scheduleId; // Use the preserved scheduleId
             const isNote = contentType === "notes";
             const cardClass = isNote ? "note-card" : "dpp-card";
             const iconClass = isNote ? "note-icon" : "dpp-icon";
