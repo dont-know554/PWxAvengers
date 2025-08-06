@@ -4,32 +4,16 @@ exports.handler = async (event, context) => {
   // Enable CORS
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Credentials': true
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
   };
 
   // Handle preflight requests
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
-      headers: {
-        ...headers,
-        'Content-Length': '0'
-      },
-      body: ''
-    };
-  }
-
-  // Token authentication
-  const authHeader = event.headers.authorization || event.headers.Authorization;
-  const expectedToken = `Bearer ${process.env.API_AUTH_TOKEN}`;
-  
-  if (!authHeader || authHeader !== expectedToken) {
-    return {
-      statusCode: 401,
       headers,
-      body: JSON.stringify({ error: 'Unauthorized access' })
+      body: ''
     };
   }
 
