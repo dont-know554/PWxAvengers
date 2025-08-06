@@ -200,6 +200,7 @@ console.clear = function() {};
 
   <script>
     const API_BASE = ""; // Use relative paths for Netlify functions
+    const API_AUTH_TOKEN = "your-shared-secret-token"; // Shared secret for API authentication
     const loadingOverlay = document.getElementById("loadingOverlay");
     const main = document.getElementById("main");
     const subjectsDiv = document.getElementById("subjects");
@@ -1073,7 +1074,11 @@ console.clear = function() {};
     async function fetchAndOpenAttachments(batchId, subjectSlug, scheduleId) {
       try {
         showLoader(true);
-        const res = await fetch(`${API_BASE}/api/batch/${batchId}/subject/${subjectSlug}/schedule/${scheduleId}/content`);
+        const res = await fetch(`${API_BASE}/api/batch/${batchId}/subject/${subjectSlug}/schedule/${scheduleId}/content`, {
+          headers: {
+            'Authorization': 'Bearer ' + API_AUTH_TOKEN
+          }
+        });
         const data = await res.json();
 
         if (!data.data || !data.data.length) {
