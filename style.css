@@ -569,6 +569,19 @@ input[type="text"]::placeholder {
     gap: 7px;
 }
 
+/* Responsive adjustment for chapter meta below 769px */
+@media (max-width: 768px) {
+    .chapter-meta {
+        justify-content: flex-start;
+        gap: 8px;
+    }
+    
+    .chapter-meta div {
+        flex: 0 0 calc(50% - 4px);
+        margin: 2px 0;
+    }
+}
+
 #lectureContent {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
