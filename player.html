@@ -24,25 +24,6 @@
       box-sizing: border-box;
     }
 
-    /* Watermark styling */
-    .watermark {
-      position: fixed;
-      bottom: 100px; /* Increased bottom margin to position further from controls */
-      left: 50%;
-      transform: translateX(-50%);
-      background-color: rgba(145, 145, 145, 0.1); /* More semi-transparent red background */
-      color: rgba(255, 0, 0, 0.694);
-      padding: 5px 10px;
-      border-radius: 5px;
-      font-size: 12px;
-      font-weight: 500;
-      letter-spacing: 1px; /* Increased letter spacing */
-      z-index: 100;
-      pointer-events: none;
-      user-select: none;
-      backdrop-filter: blur(2px);
-    }
-
     body {
       font-family: 'Poppins', sans-serif;
       background: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%);
@@ -1049,9 +1030,6 @@
       <div class="loading-spinner"></div>
     </div>
   </div>
-
-  <!-- Watermark -->
-  <div class="watermark">https://t.me/pwXavengers</div>
 
   <div class="controls" id="controls">
     <div class="controls-left">
