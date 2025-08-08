@@ -742,7 +742,7 @@
                 <h1>Generate Access Key</h1>
             
                 <div class="text-content-1">
-                    <p>Click Generate Key button below to get access for 24 hours of Pw x Avengers</p>
+                    <p>Click Generate Key button below to get access for 48 hours of Pw x Avengers</p>
                 </div>
                 <div class="text-content-2">
                     <p>If you encounter any kind of problem in generating key then click on Watch Tutotrial button and watch full video</p>
@@ -750,7 +750,7 @@
 
                 <div class="validity-info">
                     <i class="fas fa-clock"></i>
-                    <span>Key valid for 24 hours</span>
+                    <span>Key valid for  hours</span>
                 </div>
 
                 <button id="generateBtn" class="generate-btn">
@@ -941,7 +941,7 @@ console.clear = function() {};
         document.getElementById('generateBtn').addEventListener('click', function () {
             // If key already exists, redirect to content page
             if (hasValidKey) {
-                showNotification('You already have access for 24 hours', 'Redirecting to content...', 'success');
+                showNotification('You already have access for 48 hours', 'Redirecting to content...', 'success');
                 setTimeout(() => {
                     window.location.href = 'website_c.html';
                 }, 1800);
