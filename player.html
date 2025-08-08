@@ -1199,6 +1199,94 @@
   </div>
 
   <script>
+    // Secure Cookie System with HMAC Signing
+    // This prevents users from extending cookie expiry through DevTools
+    
+    // Secret key for HMAC signing (must match the one in success.html)
+    const HMAC_SECRET = 'pwavengers9936';
+    
+    // Secure Cookie Management
+    class SecureCookie {
+        static async generateHMACKey(secret) {
+            const encoder = new TextEncoder();
+            const keyData = encoder.encode(secret);
+            return await crypto.subtle.importKey(
+                'raw',
+                keyData,
+                { name: 'HMAC', hash: 'SHA-256' },
+                false,
+                ['sign', 'verify']
+            );
+        }
+        
+        static async verifySecureToken(token) {
+            try {
+                const [payloadB64, signatureB64] = token.split('.');
+                if (!payloadB64 || !signatureB64) return null;
+                
+                const payloadStr = atob(payloadB64);
+                const payload = JSON.parse(payloadStr);
+                
+                // Check expiration
+                if (Date.now() > payload.exp) {
+                    console.log('Token expired:', new Date(payload.exp));
+                    return null;
+                }
+                
+                // Verify signature
+                const encoder = new TextEncoder();
+                const payloadBytes = encoder.encode(payloadStr);
+                const signatureBytes = new Uint8Array(atob(signatureB64).split('').map(c => c.charCodeAt(0)));
+                
+                const key = await this.generateHMACKey(HMAC_SECRET);
+                const isValid = await crypto.subtle.verify('HMAC', key, signatureBytes, payloadBytes);
+                
+                if (!isValid) {
+                    console.log('Invalid token signature');
+                    return null;
+                }
+                
+                return payload;
+            } catch (error) {
+                console.log('Token verification failed:', error);
+                return null;
+            }
+        }
+    }
+    
+    // Helper function to get cookie
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+    
+    // Secure access validation
+    (async function() {
+        const secureToken = getCookie('pwavengers-key');
+        
+        if (!secureToken) {
+            console.log('No secure token found, redirecting to key generation');
+            window.location.replace('generate-key.html');
+            return;
+        }
+        
+        const payload = await SecureCookie.verifySecureToken(secureToken);
+        
+        if (!payload || payload.data !== 'success') {
+            console.log('Invalid or expired secure token, redirecting to key generation');
+            // Remove invalid token
+            document.cookie = 'pwavengers-key=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Strict';
+            window.location.replace('generate-key.html');
+            return;
+        }
+        
+        console.log('User has valid secure access to Website C');
+        console.log('Token expires:', new Date(payload.exp));
+    })();
+</script>
+
+  <script>
     // CONSOLE
     const originalConsole = {
 log: console.log,
