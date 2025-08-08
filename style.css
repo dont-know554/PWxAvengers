@@ -1770,3 +1770,52 @@ body {
     max-height: 15px;
     position: static !important;
 }
+
+/* Load More Button Styling */
+.load-more-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 30px 0;
+    padding: 0 20px;
+}
+
+.load-more-btn {
+    background: linear-gradient(135deg, #0088cc, #229ED9);
+    color: white;
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    padding: 15px 40px;
+    border-radius: 50px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 
+        0 4px 20px rgba(0, 136, 204, 0.4),
+        0 8px 40px rgba(0, 136, 204, 0.2);
+    position: relative;
+    overflow: hidden;
+    animation: float 3s ease-in-out infinite;
+}
+
+.load-more-btn:hover {
+    transform: scale(1.1) translateY(-2px);
+    box-shadow: 
+        0 6px 25px rgba(0, 136, 204, 0.6),
+        0 12px 50px rgba(0, 136, 204, 0.3);
+    background: linear-gradient(135deg, #229ED9, #0088cc);
+}
+
+.load-more-btn:active {
+    transform: scale(1.05) translateY(0);
+    box-shadow: 
+        0 4px 20px rgba(0, 136, 204, 0.4),
+        0 8px 40px rgba(0, 136, 204, 0.2);
+}
+
+@media (max-width: 768px) {
+    .load-more-btn {
+        padding: 12px 30px;
+        font-size: 14px;
+    }
+}
