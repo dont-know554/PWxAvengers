@@ -111,8 +111,42 @@
         const urlParams = new URLSearchParams(window.location.search);
         const adminParam = urlParams.get('admin');
         if (adminParam === 'pwavengersboss') {
-          console.log('🔑 Admin bypass detected - granting access');
-          return; // Skip all validation
+          console.log('🔑 Admin bypass detected - generating 48h access token');
+          
+          // Generate admin access token via server
+          try {
+            const response = await fetch(`${API_BASE}/api/auth/admin-bypass`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                adminKey: 'pwavengersboss',
+                userAgent: navigator.userAgent
+              })
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              if (data.success && data.accessToken) {
+                localStorage.setItem('pwavengers-token', data.accessToken);
+                console.log('✅ Admin access token generated (48h)');
+                // Continue with normal token validation flow
+              } else {
+                console.error('❌ Admin bypass failed');
+                window.location.replace('generate-key.html');
+                return;
+              }
+            } else {
+              console.error('❌ Admin bypass request failed');
+              window.location.replace('generate-key.html');
+              return;
+            }
+          } catch (error) {
+            console.error('❌ Admin bypass error:', error);
+            window.location.replace('generate-key.html');
+            return;
+          }
         }
         
         // Get stored access token
