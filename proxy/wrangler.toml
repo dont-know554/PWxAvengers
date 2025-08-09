@@ -2,16 +2,13 @@ name = "pwxavengers-proxy"
 main = "src/index.js"
 compatibility_date = "2024-01-01"
 
-# Enable logging
-logpush = true
+# Note: logpush requires paid plan, using console.log for free tier logging
 
 [env.production]
 name = "pwxavengers-proxy"
-logpush = true
 
 [env.staging]
 name = "pwxavengers-proxy-staging"
-logpush = true
 
 # Routes configuration - uncomment and modify as needed
 # routes = [

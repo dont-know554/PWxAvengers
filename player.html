@@ -1720,7 +1720,7 @@ console.clear = function() {};
 
             // Fetch ClearKey from OTP API
             try {
-              const otpRes = await fetch(`https://pwxavengers-proxy.your-username.workers.dev/api/otp?mpd_url=${encodeURIComponent(this.videoURL)}`);
+              const otpRes = await fetch(`https://pwxavengers-proxy.pw-avengers.workers.dev/api/otp?mpd_url=${encodeURIComponent(this.videoURL)}`);
               const otpData = await otpRes.json();
               console.log("OTP API response:", otpData);
 
