@@ -6,7 +6,8 @@
     <title>Key Generated</title>
     <link rel="icon" type="image/png" sizes="any"
         href="https://www.pw.live/favicon.ico">
-
+        <!-- <script disable-devtool-auto="true" src="https://cdn.jsdelivr.net/npm/disable-devtool" disable-select="true"
+        disable-copy="true" disable-cut="true" disable-paste="false"></script> -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -520,7 +521,7 @@
             </div>
         </div>
     </div>
-    <script>
+    <!-- <script>
         // CONSOLE
         const originalConsole = {
 log: console.log,
@@ -588,206 +589,130 @@ console.clear = function() {};
         // Start periodic checks after initial delay
         setInterval(checkDevTools, checkInterval);
     }, 1000);
-        </script>
+        </script> -->
     <script>
     // Secure Cookie System with HMAC Signing
     // This prevents users from extending cookie expiry through DevTools
     
-    // Secret key for HMAC signing (in production, this should be more secure)
-    const HMAC_SECRET = 'pwavengers9936';
+    // API Base URL for server-side authentication
+    const API_BASE = "https://pwxavengers-proxy.pw-avengers.workers.dev";
     
-    // Secure Cookie Management
-    class SecureCookie {
-        static async generateHMACKey(secret) {
-            const encoder = new TextEncoder();
-            const keyData = encoder.encode(secret);
-            return await crypto.subtle.importKey(
-                'raw',
-                keyData,
-                { name: 'HMAC', hash: 'SHA-256' },
-                false,
-                ['sign', 'verify']
-            );
-        }
-        
-        static async createSecureToken(data, expirationTime) {
-            const payload = {
-                data: data,
-                exp: expirationTime,
-                iat: Date.now()
-            };
-            
-            const payloadStr = JSON.stringify(payload);
-            const encoder = new TextEncoder();
-            const payloadBytes = encoder.encode(payloadStr);
-            
-            const key = await this.generateHMACKey(HMAC_SECRET);
-            const signature = await crypto.subtle.sign('HMAC', key, payloadBytes);
-            
-            // Convert to base64
-            const payloadB64 = btoa(payloadStr);
-            const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(signature)));
-            
-            return `${payloadB64}.${signatureB64}`;
-        }
-        
-        static async verifySecureToken(token) {
-            try {
-                const [payloadB64, signatureB64] = token.split('.');
-                if (!payloadB64 || !signatureB64) return null;
-                
-                const payloadStr = atob(payloadB64);
-                const payload = JSON.parse(payloadStr);
-                
-                // Check expiration
-                if (Date.now() > payload.exp) {
-                    console.log('Token expired:', new Date(payload.exp));
-                    return null;
-                }
-                
-                // Verify signature
-                const encoder = new TextEncoder();
-                const payloadBytes = encoder.encode(payloadStr);
-                const signatureBytes = new Uint8Array(atob(signatureB64).split('').map(c => c.charCodeAt(0)));
-                
-                const key = await this.generateHMACKey(HMAC_SECRET);
-                const isValid = await crypto.subtle.verify('HMAC', key, signatureBytes, payloadBytes);
-                
-                if (!isValid) {
-                    console.log('Invalid token signature');
-                    return null;
-                }
-                
-                return payload;
-            } catch (error) {
-                console.log('Token verification failed:', error);
-                return null;
+    // Get URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // Server-side authentication functions
+    async function validateWithServer() {
+        try {
+            // Check for admin bypass parameter
+            const adminParam = urlParams.get('admin');
+            if (adminParam === 'pwavengersboss') {
+                console.log('🔑 Admin bypass detected - granting access');
+                return { valid: true, message: 'Admin access granted!' };
             }
-        }
-    }
-    
-    // Helper function to get cookie
-    function getCookie(name) {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop().split(';').shift();
-    }
-    
-    // Check if user came from a valid shortener referrer or has a token
-    async function isValidAccess() {
-        // First check if user already has a valid secure key
-        const existingToken = getCookie('pwavengers-key');
-        if (existingToken) {
-            const payload = await SecureCookie.verifySecureToken(existingToken);
-            if (payload && payload.data === 'success') {
-                console.log('User already has valid secure key, allowing access');
-                return true;
+            
+            // First check if user already has a valid token
+            const existingToken = localStorage.getItem('pwavengers-token');
+            if (existingToken) {
+                const response = await fetch(`${API_BASE}/api/auth/verify-token?token=${existingToken}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.valid) {
+                        console.log('✅ User already has valid access token');
+                        return { valid: true, message: 'You already have access for ' + data.remainingHours + ' hours' };
+                    }
+                }
+                // Remove invalid token
+                localStorage.removeItem('pwavengers-token');
+            }
+            
+            // Get session ID from sessionStorage (set by generate-key.html)
+            const sessionId = sessionStorage.getItem('pwx-session-id');
+            const completionToken = urlParams.get('token');
+            
+            console.log('🔍 Validating session:', sessionId, 'with token:', completionToken);
+            
+            if (!sessionId) {
+                return { valid: false, message: 'No session found. Please generate a new key.' };
+            }
+            
+            if (!completionToken || completionToken !== 'auth-success') {
+                return { valid: false, message: 'Invalid completion token. Please complete the shortener process.' };
+            }
+            
+            // Validate with server
+            const response = await fetch(`${API_BASE}/api/auth/validate-completion`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    sessionId: sessionId,
+                    completionToken: completionToken,
+                    userAgent: navigator.userAgent
+                })
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+                return { valid: false, message: errorData.message || 'Validation failed' };
+            }
+            
+            const data = await response.json();
+            
+            if (data.success && data.accessToken) {
+                // Store access token
+                localStorage.setItem('pwavengers-token', data.accessToken);
+                
+                // Clean up session storage
+                sessionStorage.removeItem('pwx-session-id');
+                
+                console.log('✅ Access token generated and stored');
+                return { valid: true, message: '48 hours access granted!' };
             } else {
-                // Remove invalid/expired token
-                document.cookie = 'pwavengers-key=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Strict';
-                console.log('Removed invalid/expired secure token');
+                return { valid: false, message: 'Failed to generate access token' };
             }
+            
+        } catch (error) {
+            console.error('❌ Validation error:', error);
+            return { valid: false, message: 'Connection error. Please try again.' };
         }
-        
-        const urlParams = new URLSearchParams(window.location.search);
-
-        const adminParam = urlParams.get('admin');
-        if (adminParam === 'pwavengersboss') {
-            console.log('Admin parameter detected - bypassing shortener validation');
-            return true;
-        }
-        
-        const referrer = document.referrer;
-        
-        const isValidReferrer = referrer && (
-            referrer.includes('gplinks.co') || 
-            referrer.includes('ngrok-free.app') ||
-            referrer.includes('procinehub.com/')
-        );
-        
-        // Check for token parameter
-        const token = urlParams.get('token');
-        const isValidToken = token === 'auth-success';
-        
-        // Security: BOTH valid referrer AND valid token are required
-        // This prevents direct access and ensures proper flow through shortener
-        return isValidReferrer && isValidToken;
+    }
+    
+    // Main validation function (replaces old client-side logic)
+    async function isValidAccess() {
+        const result = await validateWithServer();
+        return result.valid;
     }
     
     async function grantAccess() {
-        // Debug information
-        console.log('Document referrer:', document.referrer);
-        console.log('Current URL:', window.location.href);
+        console.log('🔍 Starting server-side validation...');
         
-        // Check if user already has valid secure key first
-        const existingToken = getCookie('pwavengers-key');
-        if (existingToken) {
-            const payload = await SecureCookie.verifySecureToken(existingToken);
-            if (payload && payload.data === 'success') {
-                console.log('User already has valid secure access, redirecting to content');
-                // Show different message for existing users
+        // Validate with server
+        const result = await validateWithServer();
+        
+        if (result.valid) {
+            console.log('✅ Access granted:', result.message);
+            
+            // Show success
+            setTimeout(() => {
                 document.getElementById('loader').style.display = 'none';
                 document.getElementById('success').style.display = 'block';
-                // Change heading to 'Access Granted' for existing users too
                 document.querySelector('h1').textContent = 'Access Granted';
-                // Change subtitle to show access message instead of hiding it
-                document.querySelector('.subtitle').textContent = 'You already have access';
-                document.querySelector('#success h2').textContent = 'Welcome Back!';
-                document.querySelector('#success p').textContent = 'Redirecting to PW x Avengers...';
+                document.querySelector('.success h2').textContent = 'Welcome To PW x Avengers';
+                document.querySelector('.success p').textContent = result.message + ' Redirecting...';
+                document.querySelector('.subtitle').style.display = 'none';
                 
                 setTimeout(() => {
-                    window.location.href = '/';
+                    window.location.href = '/'; // Redirect to main page
                 }, 3000);
-                return;
-            } else {
-                // Remove invalid/expired token
-                document.cookie = 'pwavengers-key=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Strict';
-                console.log('Removed invalid/expired secure token');
-            }
+            }, 1000);
+        } else {
+            console.log('❌ Access denied:', result.message);
+            showErrorPopup(
+                result.message || 'Access validation failed. Please try generating a new key.',
+                'generate-key.html'
+            );
         }
-        
-        // Security check for new users
-        if (!(await isValidAccess())) {
-            console.log('Access validation failed');
-            showErrorPopup('Access denied. Please complete the shortener process first to gain access. You will be automatically redirected to the key generation page.', 'generate-key.html');
-            return;
-        }
-        
-        console.log('Access validation passed');
-        
-        // Hide token from URL using History API
-        const urlParams = new URLSearchParams(window.location.search);
-        const token = urlParams.get('token');
-        if (token) {
-            // Remove token from URL
-            const newUrl = window.location.pathname + window.location.hash;
-            window.history.replaceState({}, document.title, newUrl);
-        }
-        
-        const now = new Date();
-        const expirationTime = now.getTime() + 48 * 60 * 60 * 1000; // 48 hours
-        const expirationDate = new Date(expirationTime);
-        
-        // Create secure token with embedded expiration
-        const secureToken = await SecureCookie.createSecureToken('success', expirationTime);
-        
-        // Set secure cookie - even if user extends cookie expiry, the embedded expiration will be checked
-        document.cookie = `pwavengers-key=${secureToken}; expires=${expirationDate.toUTCString()}; path=/; SameSite=Strict`;
-        
-        console.log('Secure cookie set with embedded expiration:', new Date(expirationTime));
-        
-        setTimeout(() => {
-            document.getElementById('loader').style.display = 'none';
-            document.getElementById('success').style.display = 'block';
-            // Change heading to 'Access Granted' when success is shown
-            document.querySelector('h1').textContent = 'Access Granted';
-            // Hide the subtitle after success
-            document.querySelector('.subtitle').style.display = 'none';
-            
-            setTimeout(() => {
-                window.location.href = '/'; // Redirect to main page
-            }, 3000);
-        }, 1000);
     }
     
     function showErrorPopup(message, redirectUrl) {

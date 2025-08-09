@@ -7,7 +7,8 @@
     <title>Generate Key - PW x Avengers</title>
     <link rel="icon" type="image/png" sizes="any"
         href="https://www.pw.live/favicon.ico">
-
+        <!-- <script disable-devtool-auto="true" src="https://cdn.jsdelivr.net/npm/disable-devtool" disable-select="true"
+        disable-copy="true" disable-cut="true" disable-paste="false"></script> -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -171,7 +172,6 @@
             width: 100%;
             animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
             overflow: hidden;
-            flex: 1;
             position: relative;
         }
 
@@ -713,6 +713,79 @@
             }
         }
 
+        /* Server Selection Styles */
+        .server-selection {
+            text-align: center;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .server-title {
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        .server-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .server-btn {
+            width: 100%;
+            max-width: 400px;
+        }
+
+        /* Server 1 - Blue (default) */
+        .server-btn[data-server="1"] {
+            background: var(--accent-gradient);
+            box-shadow: 0 20px 40px rgba(0, 162, 255, 0.2);
+        }
+
+        .server-btn[data-server="1"]:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 25px 50px rgba(0, 162, 255, 0.3);
+        }
+
+        /* Server 2 - Yellow/Orange */
+        .server-btn[data-server="2"] {
+            background: linear-gradient(135deg, #ff9500 0%, #ff6b00 100%);
+            box-shadow: 0 20px 40px rgba(255, 149, 0, 0.2);
+        }
+
+        .server-btn[data-server="2"]:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 25px 50px rgba(255, 149, 0, 0.3);
+        }
+
+        /* Server 3 - Green */
+        .server-btn[data-server="3"] {
+            background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+            box-shadow: 0 20px 40px rgba(0, 255, 136, 0.2);
+        }
+
+        .server-btn[data-server="3"]:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 25px 50px rgba(0, 255, 136, 0.3);
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         @media (prefers-reduced-motion: reduce) {
 
             *,
@@ -767,6 +840,36 @@
                         <span>Watch Tutorial</span>
                     </div>
                 </button>
+
+                <!-- Server Selection (Hidden Initially) -->
+                <div class="server-selection" style="display: none;">
+                    <h2 class="server-title">Choose Your Server:</h2>
+                    <div class="server-buttons">
+                        <button class="generate-btn server-btn" data-server="1">
+                            <div class="btn-content">
+                                <div class="loading-spinner"></div>
+                                <i class="fas fa-key"></i>
+                                <span class="btn-text">Server 1</span>
+                            </div>
+                        </button>
+                        
+                        <button class="generate-btn server-btn" data-server="2">
+                            <div class="btn-content">
+                                <div class="loading-spinner"></div>
+                                <i class="fas fa-key"></i>
+                                <span class="btn-text">Server 2</span>
+                            </div>
+                        </button>
+                        
+                        <button class="generate-btn server-btn" data-server="3">
+                            <div class="btn-content">
+                                <div class="loading-spinner"></div>
+                                <i class="fas fa-key"></i>
+                                <span class="btn-text">Server 3</span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
                 <div id="progressBar" class="progress-bar">
                     <div class="progress-fill"></div>
                 </div>
@@ -787,7 +890,7 @@
             <div class="notification-message">Generating your access key...</div>
         </div>
     </div>
-    <script>
+   <!-- <script>
         // CONSOLE
         const originalConsole = {
 log: console.log,
@@ -855,7 +958,7 @@ console.clear = function() {};
         // Start periodic checks after initial delay
         setInterval(checkDevTools, checkInterval);
     }, 1000);
-        </script>
+        </script> -->
     <script>
         // Check if user already has a valid key
         function getCookie(name) {
@@ -864,13 +967,15 @@ console.clear = function() {};
             if (parts.length === 2) return parts.pop().split(';').shift();
         }
 
-        const generateUrl = 'https://gplinks.co/pwXavengerskey'; // 5-minute access key
+        // API Base URL
+        const API_BASE = "https://pwxavengers-proxy.pw-avengers.workers.dev";
 
         // Flag to track if key exists
         let hasValidKey = false;
+        let currentSessionId = null;
 
-        // Check for existing key on page load
-        function checkForKey() {
+        // Check for existing key on page load (server-side verification)
+        async function checkForKey() {
             const btn = document.getElementById('generateBtn');
             const btnText = document.getElementById('btnText');
 
@@ -879,8 +984,32 @@ console.clear = function() {};
             btn.disabled = true;
             btnText.textContent = 'Checking Access...';
 
-            // Check if key is already generated
-            hasValidKey = getCookie('pwavengers-key');
+            try {
+                // Get stored access token
+                const accessToken = localStorage.getItem('pwavengers-token');
+                
+                if (accessToken) {
+                    // Verify token with server
+                    const response = await fetch(`${API_BASE}/api/auth/verify-token?token=${accessToken}`);
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.valid) {
+                            hasValidKey = true;
+                            console.log(`✅ Valid access token found (${data.remainingHours}h ${data.remainingMinutes}m remaining)`);
+                        } else {
+                            // Remove invalid token
+                            localStorage.removeItem('pwavengers-token');
+                        }
+                    } else {
+                        // Remove invalid token
+                        localStorage.removeItem('pwavengers-token');
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Error checking access token:', error);
+                localStorage.removeItem('pwavengers-token');
+            }
 
             // Re-enable button after check
             setTimeout(() => {
@@ -891,7 +1020,7 @@ console.clear = function() {};
                 } else {
                     btnText.textContent = 'Generate Access Key';
                 }
-            }, 1000); // Simulate a brief check
+            }, 1000);
         }
 
         // Run the check when page loads
@@ -930,12 +1059,86 @@ console.clear = function() {};
             }
         }
 
-        function redirectToUrl() {
-            showNotification('Key Generated!', 'Redirecting to next page.. complete shortner', 'success');
-
+        function showServerSelection() {
+            // Hide all current elements with smooth transition
+            const elementsToHide = [
+                'h1',
+                '.text-content-1',
+                '.text-content-2', 
+                '.validity-info',
+                '#generateBtn',
+                '.tutorial-btn'
+            ];
+            
+            elementsToHide.forEach(selector => {
+                const element = document.querySelector(selector);
+                if (element) {
+                    element.style.transition = 'opacity 0.5s ease-out, transform 0.5s ease-out';
+                    element.style.opacity = '0';
+                    element.style.transform = 'translateY(-20px)';
+                    setTimeout(() => {
+                        element.style.display = 'none';
+                    }, 500);
+                }
+            });
+            
+            // Show server selection after elements are hidden
             setTimeout(() => {
-                window.location.href = generateUrl;
-            }, 1800);
+                document.querySelector('.server-selection').style.display = 'block';
+            }, 600);
+        }
+
+        async function redirectToServer(serverNumber) {
+            try {
+                showNotification('Connecting to Server ' + serverNumber, 'Generating secure session...', 'loading');
+                
+                // Call server to generate session
+                const response = await fetch(`${API_BASE}/api/auth/generate-session`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        selectedServer: parseInt(serverNumber),
+                        userAgent: navigator.userAgent,
+                        timestamp: Date.now()
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Server responded with ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Store session ID for later validation
+                    currentSessionId = data.sessionId;
+                    sessionStorage.setItem('pwx-session-id', data.sessionId);
+                    
+                    console.log(`🔑 Session generated: ${data.sessionId}`);
+                    
+                    showNotification('Session Created!', 'Redirecting to complete shortener...', 'success');
+                    
+                    setTimeout(() => {
+                        window.location.href = data.redirectUrl;
+                    }, 1800);
+                } else {
+                    throw new Error('Failed to generate session');
+                }
+                
+            } catch (error) {
+                console.error('❌ Session generation failed:', error);
+                showNotification('Connection Failed', 'Please try again or select a different server', 'error');
+                
+                // Re-enable server selection
+                setTimeout(() => {
+                    document.querySelectorAll('.server-btn').forEach(btn => {
+                        btn.classList.remove('loading');
+                        btn.querySelector('.loading-spinner').classList.remove('show');
+                    });
+                }, 2000);
+            }
         }
 
         document.getElementById('generateBtn').addEventListener('click', function () {
@@ -948,24 +1151,24 @@ console.clear = function() {};
                 return;
             }
 
-            const btn = this;
-            const btnText = document.getElementById('btnText');
-            const spinner = document.getElementById('loadingSpinner');
-            const progressBar = document.getElementById('progressBar');
+            // Show server selection instead of immediate redirect
+            showServerSelection();
+        });
 
-            btn.classList.add('loading');
-            btnText.textContent = 'Generating Key...';
-            spinner.classList.add('show');
-            progressBar.classList.add('show');
-
-            // Show single notification throughout the process
-            showNotification('Generating Key', 'Please wait while we processing your request...', 'loading');
-
-            // No additional notifications needed - keep the same notification throughout
-
-            setTimeout(() => {
-                redirectToUrl();
-            }, 3600);
+        // Add event listeners for server buttons
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.server-btn')) {
+                const serverNumber = e.target.closest('.server-btn').dataset.server;
+                const btn = e.target.closest('.server-btn');
+                const spinner = btn.querySelector('.loading-spinner');
+                
+                // Add loading state
+                btn.classList.add('loading');
+                spinner.classList.add('show');
+                
+                // Redirect to selected server
+                redirectToServer(serverNumber);
+            }
         });
 
         document.addEventListener('DOMContentLoaded', function () {
