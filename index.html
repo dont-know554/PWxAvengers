@@ -1196,15 +1196,15 @@
         const res = await fetch(`${API_BASE}/api/batch/${batchId}/subject/${subjectSlug}/schedule/${scheduleId}/content`);
         const data = await res.json();
 
-        if (!data.data || !data.data.length) {
+        if (!data.data) {
           alert("No content found.");
           return;
         }
 
-        const attachments = data.data.flatMap(item =>
-          (item.homeworkIds || []).flatMap(hw =>
-            (hw.attachmentIds || [])
-          )
+        // Handle single object response (not array)
+        const scheduleData = data.data;
+        const attachments = (scheduleData.homeworkIds || []).flatMap(hw =>
+          (hw.attachmentIds || [])
         );
 
         if (!attachments.length) {
