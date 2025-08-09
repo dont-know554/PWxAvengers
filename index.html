@@ -506,30 +506,8 @@
       container.appendChild(div);
     }
 
-    // 🎯 SPECIFIC BATCH IDs TO SHOW - Replace these with your desired batch IDs
-    const ALLOWED_BATCH_IDS = [
-      "6774ebb37aa1a60276d43e7c",  //neev
-      "65df241600f257001881fbbd",  //udaan
-      "6774f509dcc961a5430bb4ba", //uday2026
-      "67a3095a0ca0d94d9c023bc9", //uday2026 - commerce
-      "6773ed69073fb66bd4a9081c", //uday2026 - humanities
-      "676e5677418e84037bd6247c", // arjuna neet
-      "676e4dee1ec923bc192f38c9", // arjuna jee
-      "6774f509fd80ba9fd582cb96", // parishram
-      "65dc6fbaf5bcd500180102cd", // lakshya neet
-      "65dc6fbabb55350018d555b7", // lakshya jee
-      "678a0324dab28c8848cc026f", // arjuna jee 2.0
-      "678a1c6c984a0ff1ae00a142", // arjuna jee 3.0
-      "678a08fc872e93ccb58047b0", // arjuna neet 2.0
-      "678a29372d11efb05956e1f8", // arjuna neet 3.0
-      "677929e692a5a811765a3658", // umang
-      "67a31ccb67ed4d0022edaa14", // parishram commerce
-      "67d7b5d9da15d97e06fb22c6", // uday isc 2026
-      "67beb6e665bd7b47d657bcbf", // neev 2.0
-      "67be1ea9508fc4755e582d8e", // udaan 2.0
-      "6789f904f69b15eb632db640", // lakshya jee 2.0
-      "678a0ffe3afbca5384419b05", // lakshya neet 2.0
-    ];
+    // 🎯 BATCH FILTERING NOW HANDLED SERVER-SIDE
+    // No need for client-side filtering - server returns only allowed batches
 
     async function loadBatches({ reset = false } = {}) {
       if (isLoading || (!hasMore && !reset)) return;
@@ -548,129 +526,47 @@
       showLoader(true);
 
       try {
-        let filteredBatches = [];
+        // 🚀 SIMPLIFIED: Server handles all filtering now
+        let query = currentQuery ? `&q=${encodeURIComponent(currentQuery)}` : '';
+        const apiUrl = `${API_BASE}/api/batches?page=${currentPage}&limit=50${query}`;
+        
+        console.log('📡 Fetching server-filtered batches from:', apiUrl);
 
-        if (currentQuery) {
-          // If there's a search query, use it normally
-          const query = `&q=${encodeURIComponent(currentQuery)}`;
-          const apiUrl = `${API_BASE}/api/batches?page=${currentPage}&limit=50${query}`;
-          console.log('📡 Fetching with search from:', apiUrl);
+        const res = await fetch(apiUrl);
+        const data = await res.json();
 
-          const res = await fetch(apiUrl);
-          const data = await res.json();
+        console.log('📦 Server Response:', data);
+        console.log('📊 Server-filtered batches received:', data.batches?.length || 0);
+        console.log('🎯 Server filtering active:', data.serverFiltered || false);
 
-          console.log('📦 API Response:', data);
-          console.log('📊 Total batches from API:', data.batches?.length || 0);
+        // Server already filtered the batches - use them directly
+        const serverFilteredBatches = data.batches || [];
+        
+        console.log('✅ Server-side filtering complete:', serverFilteredBatches.length, 'batches');
 
-          // Filter for allowed batches
-          filteredBatches = data.batches.filter(b => {
-            const isAllowed = ALLOWED_BATCH_IDS.includes(b._id);
-            console.log(`🔍 Batch "${b.name}" (${b._id}): ${isAllowed ? '✅ ALLOWED' : '❌ FILTERED OUT'}`);
-            return isAllowed;
-          });
-        } else {
-          // No search query - show allowed batches
-          console.log('🏠 Loading homepage batches (no search query)');
-
-          // NEW CODE - Parallel batch loading for faster performance
-          const searchTerms = ['uday', 'arjuna', 'yakeen', 'lakshya', 'udaan', 'neev', 'parishram', 'umang'];
-
-          console.log('🚀 Making parallel API calls for faster loading...');
-
-          // Create all fetch promises at once
-          const fetchPromises = searchTerms.map(term =>
-            fetch(`${API_BASE}/api/batches?page=1&limit=100&q=${encodeURIComponent(term)}`)
-              .then(res => res.json())
-              .catch(err => {
-                console.error(`❌ Error fetching batches for "${term}":`, err);
-                return { batches: [] };
-              })
-          );
-
-          // Wait for all requests to complete in parallel ⚡
-          const results = await Promise.all(fetchPromises);
-
-          // Process all results and find allowed batches
-          const foundBatchIds = new Set();
-
-          results.forEach((searchData, index) => {
-            if (searchData.batches) {
-              for (const batchId of ALLOWED_BATCH_IDS) {
-                if (!foundBatchIds.has(batchId)) {
-                  const foundBatch = searchData.batches.find(b => b._id === batchId);
-                  if (foundBatch) {
-                    filteredBatches.push(foundBatch);
-                    foundBatchIds.add(batchId);
-                  }
-                }
-              }
-            }
-          });
-
-          if (foundBatchIds.size >= ALLOWED_BATCH_IDS.length) {
-            console.log('✅ Found all target batches!');
-          }
-
-          // If we still don't have enough batches, try a broader search
-          if (filteredBatches.length === 0) {
-            console.log('🔄 No batches found with search strategies, trying broader search...');
-            try {
-              // Try getting recent batches without search query
-              const fallbackUrl = `${API_BASE}/api/batches?page=1&limit=100`;
-              const fallbackRes = await fetch(fallbackUrl);
-              const fallbackData = await fallbackRes.json();
-
-              // Filter for allowed batches from the broader result
-              filteredBatches = fallbackData.batches.filter(b =>
-                ALLOWED_BATCH_IDS.includes(b._id)
-              );
-
-              console.log(`🎯 Found ${filteredBatches.length} allowed batches from fallback search`);
-            } catch (fallbackErr) {
-              console.error('❌ Fallback search also failed:', fallbackErr);
-            }
-          }
-
-          // Log which batches we couldn't find
-          for (const batchId of ALLOWED_BATCH_IDS) {
-            if (!foundBatchIds.has(batchId)) {
-              console.log(`❌ Could not find batch with ID: ${batchId}`);
-            }
-          }
-        }
-
-        // console.log('🎯 Final filtered batches count:', filteredBatches.length);
-
-        // Sort batches according to their order in ALLOWED_BATCH_IDS array
-        filteredBatches.sort((a, b) => {
-          const indexA = ALLOWED_BATCH_IDS.indexOf(a._id);
-          const indexB = ALLOWED_BATCH_IDS.indexOf(b._id);
-          return indexA - indexB;
-        });
-
-        const newBatches = filteredBatches.map(b => ({
+        const newBatches = serverFilteredBatches.map(b => ({
           name: b.name,
           image: b.previewImage,
           batchId: b._id
         }));
 
-        if (filteredBatches.length === 0) {
+        if (serverFilteredBatches.length === 0) {
           renderNoResults();
           hasMore = false;
           setTimeout(() => {
             showLoader(false);
           }, 800);
-          // loadMoreBtnWrapper.style.display = "none"; // Removed as we no longer have this button
         } else {
           allBatches = reset ? newBatches : allBatches.concat(newBatches);
-          // Show batches immediately while loading overlay is still visible
+          // Show batches immediately
           sortAndRenderBatches();
-          // NEW CODE - Show results immediately (no artificial delay)
-          showLoader(false);  // ⚡ Shows results immediately
+          showLoader(false);
 
-          // Since we're filtering, disable pagination after first load
-          hasMore = false;
-          // loadMoreBtnWrapper.style.display = "none"; // Removed as we no longer have this button
+          // Update pagination based on server response
+          hasMore = data.hasMore || false;
+          if (data.hasMore) {
+            currentPage++;
+          }
         }
       } catch (err) {
         console.error("❌ Failed to load batches:", err);
