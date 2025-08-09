@@ -1,0 +1,2371 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/png" sizes="any"
+    href="https://www.pw.live/favicon.ico">
+  <script src="https://cdn.dashjs.org/latest/dash.all.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.6/shaka-player.compiled.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <title>PW x AVENGERS - PLAYER</title>
+  <script disable-devtool-auto="true" src="https://cdn.jsdelivr.net/npm/disable-devtool" disable-select="true" disable-copy="true" disable-cut="true" disable-paste="false"></script>
+  <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "6aeea0aeb5c54e3eac0fc4f0db759346"}'></script><!-- End Cloudflare Web Analytics -->
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;700&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%);
+      color: #ffffff;
+      overflow: hidden;
+      cursor: default;
+      user-select: none;
+    }
+
+    .video-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: #000;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+    }
+
+    .controls {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0, 2, 25, 0.9);
+      backdrop-filter: blur(6px) saturate(180%);
+      -webkit-backdrop-filter: blur(6px) saturate(180%);
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1rem;
+      z-index: 10;
+      opacity: 1;
+      transform: translateY(0);
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .controls.hidden {
+      opacity: 0;
+      transform: translateY(100%);
+      pointer-events: none;
+    }
+
+    .controls-left,
+    .controls-right {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex: 0 0 auto;
+      min-width: 0;
+    }
+
+    .controls-left {
+      justify-content: flex-start;
+    }
+
+    .controls-right {
+      justify-content: flex-end;
+    }
+
+
+    .control-btn {
+      background: #3434344b;
+      border: 1px solid rgba(141, 192, 255, 0.2);
+      color: white;
+      cursor: pointer;
+      padding: 0.75rem;
+      border-radius: 12px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(10px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .control-btn:hover {
+      background: #0091eb !important;
+      transform: scale(0.95);
+      box-shadow: 0 2px 20px rgba(119, 228, 255, 0.524);
+    }
+
+    .control-btn:active {
+      transform: translateY(0);
+    }
+
+    @keyframes rotate {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    .play-icon {
+      width: 20px;
+      height: 20px;
+      fill: #ffffff;
+      transition: all 0.3s ease;
+      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+    }
+
+    /* Time Display - Futuristic */
+    .time {
+      font-size: 0.9rem;
+      color: #e0e0e0;
+      font-weight: 500;
+      min-width: 140px;
+      padding: 0.5rem 1rem;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+    }
+
+    /* Progress Bar - Inline with Controls */
+    .progress-container {
+      flex: 2;
+      height: 6px;
+      display: flex;
+      align-items: center;
+      min-width: 200px;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .progress-container.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .controls-center {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      gap: 0.5rem;
+      min-width: 0;
+      margin: 0 1.5rem;
+    }
+
+    .time-current,
+    .time-duration {
+      color: white;
+      font-size: 0.875rem;
+      font-weight: 500;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+      white-space: nowrap;
+      width: 60px;
+      flex-shrink: 0;
+      text-align: center;
+      z-index: 15;
+    }
+
+    .progress-range {
+      flex: 1;
+      width: 100%;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 6px;
+      border-radius: 4px;
+      background: #ffffff;
+      background-image: linear-gradient(90deg, #00b7eb 0%, #1e90ff 100%);
+      background-size: var(--seek-fill, 0%) 100%;
+      background-repeat: no-repeat;
+      box-shadow: #0055ff 0 0 8px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .progress-range::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #98c7ff;
+      border: 2px solid #1e90ff;
+      transition: transform 0.25s ease, background 0.25s ease;
+      cursor: pointer;
+    }
+
+    .progress-range:hover::-webkit-slider-thumb {
+      background: #00b7eb;
+      transform: scale(1.2);
+    }
+
+    .progress-range::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #98c7ff;
+      border: 2px solid #1e90ff;
+      transition: transform 0.25s ease, background 0.25s ease;
+      cursor: pointer;
+    }
+
+    .progress-range:hover::-moz-range-thumb {
+      background: #00b7eb;
+      transform: scale(1.2);
+    }
+
+    /* Back Button - Floating */
+    .back-button {
+      position: fixed;
+      top: 1.5rem;
+      left: 1.5rem;
+      z-index: 20;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(20px);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 0.75rem 1.25rem;
+      font-size: 0.9rem;
+      font-weight: 500;
+      border-radius: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      font-family: 'Inter', sans-serif;
+    }
+
+    .back-button:hover {
+      background: #0091eb !important;
+      transform: scale(0.95);
+      box-shadow: 0 2px 20px rgba(119, 228, 255, 0.524);
+    }
+
+    .back-button.hidden {
+      opacity: 0;
+      transform: translateY(-20px);
+      pointer-events: none;
+    }
+
+    /* Hide back button in fullscreen mode */
+    body.fullscreen-mode .back-button {
+      opacity: 0;
+      transform: translateY(-20px);
+      pointer-events: none;
+    }
+
+    /* SVG Icons */
+    .icon {
+      width: 20px;
+      height: 20px;
+      fill: currentColor;
+    }
+
+    .icon-small {
+      width: 16px;
+      height: 16px;
+      fill: currentColor;
+    }
+
+    /* Skip Button Icons */
+    .skip-icon {
+      width: 20px;
+      height: 20px;
+      fill: #ffffff;
+      transition: all 0.3s ease;
+      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+    }
+
+    .control-btn:hover .skip-icon {
+      fill: #ffffff;
+      transform: scale(1.1);
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+    }
+
+    /* Control Groups for Radio Buttons */
+    .control-group {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .control-group-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      min-width: 80px;
+      padding: 0.6rem 0.8rem;
+    }
+
+    .control-group-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    }
+
+    .control-value {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #ffffff;
+      font-family: 'Inter', sans-serif;
+      letter-spacing: 0.5px;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+
+    .control-options {
+      position: absolute;
+      bottom: 120%;
+      left: 0%;
+      transform: translateX(-50%);
+      background: rgba(0, 2, 25, 0.9);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 0.50rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      min-width: 130px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      z-index: 100;
+      margin-bottom: 0.5rem;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Settings Menu Styles */
+    .settings-menu {
+      min-width: 180px;
+      padding: 0;
+    }
+
+    .settings-submenu {
+      min-width: 180px;
+      padding: 0;
+    }
+
+    .settings-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1rem;
+      background: rgba(255, 255, 255, 0.05);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      font-weight: 600;
+      font-size: 1.2rem;
+      color: #ffffff;
+      border-radius: 12px 12px 0 0;
+      width: 100%;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s ease;
+      text-align: left;
+      justify-content: flex-start;
+    }
+
+    .settings-header:hover {
+      background: rgba(0, 115, 255, 0.522);
+      border-radius: 8px;
+    }
+
+    .settings-arrow-back {
+      font-size: 16px;
+      color: currentColor;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+
+    .settings-section {
+      padding: 0rem;
+    }
+
+    .settings-option {
+      width: 100%;
+      background: none;
+      border: none;
+      color: white;
+      cursor: pointer;
+      padding: 1rem 1rem;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1.3rem;
+      transition: background 0.2s ease;
+      font-size: 0.85rem;
+    }
+
+    .settings-option:hover {
+      background: rgba(69, 200, 233, 0.3);
+    }
+
+    .settings-label {
+      font-weight: 600;
+      color: #d0d0d0;
+    }
+
+    .settings-current {
+      color: #ffffff;
+      font-weight: 600;
+      margin-right: 0.5rem;
+      text-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+    }
+
+    .control-options.hidden {
+      display: none;
+    }
+
+    .control-option {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      transition: background 0.2s ease;
+    }
+
+    .control-option:hover {
+      background: rgba(69, 200, 233, 0.3);
+      border-radius: 8px;
+    }
+
+    .control-option input[type="radio"] {
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid #25252548;
+      margin-right: 10px;
+      cursor: pointer;
+      position: relative;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .option-item input[type="radio"]:hover {
+      border-color: #1e90ff;
+      box-shadow: 0 0 5px rgba(30, 144, 255, 0.5);
+    }
+
+    .control-option input[type="radio"]:checked {
+      border-color: #1e90ff;
+      background-color: #1e90ff;
+      box-shadow: 0 0 5px rgba(30, 144, 255, 0.5);
+    }
+
+    .control-option input[type="radio"]:checked::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 10px;
+      height: 10px;
+      background: #ffffff;
+      border-radius: 50%;
+    }
+
+    .option-item input[type="radio"]:checked::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 8px;
+      height: 8px;
+      background-color: #fff;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .option-label {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #ffffff;
+      cursor: pointer;
+    }
+
+    /* Dropdown Arrow */
+    .control-select {
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 0.8rem center;
+      background-size: 16px;
+      padding-right: 2.5rem;
+    }
+
+    /* Fullscreen Styles */
+    body.fullscreen-mode {
+      cursor: none;
+    }
+
+    body.fullscreen-mode.show-cursor {
+      cursor: default;
+    }
+
+    /* Loading Animation */
+    .loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 5;
+    }
+
+    .loading-spinner {
+      --ring-size: 64px;
+      --ring-thickness: 6px;
+      width: var(--ring-size);
+      aspect-ratio: 1 / 1;
+      border-radius: 50%;
+      background: conic-gradient(#1e90ff 0deg,
+          #00b7eb 90deg,
+          #a21caf 180deg,
+          #ff6200 270deg,
+          #1e90ff 360deg);
+
+      -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--ring-thickness)), #000 calc(100% - var(--ring-thickness)));
+      mask: radial-gradient(farthest-side, transparent calc(100% - var(--ring-thickness)), #000 calc(100% - var(--ring-thickness)));
+      animation: spin 1s linear infinite, glowPulse 1.6s ease-in-out infinite;
+      margin-bottom: 20px;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* Mobile Responsive - Two Line Layout */
+    @media (max-width: 768px) {
+      .controls {
+        padding: 0.75rem 1rem;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      /* First Line: Playback controls + Time + Seekbar (all together) */
+      .controls-left {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        flex: 0 0 auto;
+      }
+
+      .controls-center {
+        display: flex;
+        align-items: center;
+        flex: 1 1 auto;
+        gap: 0.3rem;
+        margin: 0 0.5rem;
+        min-width: 150px;
+      }
+
+      /* Second Line: Settings + Fullscreen (force to new line) */
+      .controls-right {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        flex-basis: 100%;
+        width: 100%;
+        margin-top: 0.5rem;
+      }
+
+      /* Mobile Control Button Sizing */
+      .control-btn {
+        padding: 0.6rem;
+        height: 2.5rem;
+        width: 2.5rem;
+        border-radius: 8px;
+      }
+
+      /* Mobile Time Labels */
+      .time-current,
+      .time-duration {
+        font-size: 0.8rem;
+        width: 45px;
+        min-width: 45px;
+      }
+
+      /* Mobile Seekbar */
+      .progress-container {
+        flex: 1;
+        height: 8px;
+        min-width: 120px;
+      }
+
+      .progress-range {
+        height: 8px;
+      }
+
+      .progress-range::-webkit-slider-thumb {
+        width: 18px;
+        height: 18px;
+      }
+
+      .progress-range::-moz-range-thumb {
+        width: 18px;
+        height: 18px;
+      }
+
+      /* Mobile Icon Sizing */
+      .control-btn .skip-icon,
+      .control-btn .play-icon {
+        width: 18px;
+        height: 18px;
+      }
+
+      .back-button {
+        top: 1rem;
+        left: 1rem;
+        padding: 0.6rem 1rem;
+        font-size: 0.85rem;
+      }
+
+      .icon {
+        width: 18px;
+        height: 18px;
+      }
+
+      .icon-small {
+        width: 14px;
+        height: 14px;
+      }
+    }
+
+    /* Very Small Mobile Devices - Center First Line Controls */
+    @media (max-width: 425px) {
+      .controls {
+        padding: 0.5rem 0.75rem;
+        justify-content: center;
+      }
+
+      /* Center-align first line controls when they break into separate line */
+      .controls-left {
+        justify-content: center;
+        width: 100%;
+        flex-basis: 100%;
+        margin-bottom: 0.5rem;
+      }
+
+      .controls-center {
+        margin: 0;
+        width: 100%;
+        flex-basis: 100%;
+      }
+
+      .controls-right {
+        margin-top: 0;
+      }
+    }
+
+    /* Extra Small Mobile Devices */
+    @media (max-width: 480px) {
+      .controls {
+        padding: 0.5rem 0.75rem;
+      }
+
+      .controls-left,
+      .controls-right {
+        gap: 0.4rem;
+      }
+
+      .control-btn {
+        height: 2.25rem;
+        width: 2.25rem;
+        padding: 0.4rem;
+      }
+
+      .control-select {
+        font-size: 0.7rem;
+        padding: 0.35rem 1.6rem 0.35rem 0.5rem;
+        min-width: 60px;
+        height: 2.25rem;
+        background-size: 12px;
+        background-position: right 0.5rem center;
+      }
+
+      .time {
+        font-size: 0.75rem;
+        min-width: 90px;
+        padding: 0.25rem 0.5rem;
+      }
+
+      .back-button {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+      }
+
+      .progress-container {
+        left: 0.75rem;
+        right: 0.75rem;
+        bottom: 5.5rem;
+      }
+
+      .progress-container:hover {
+        bottom: 5.4rem;
+      }
+    }
+
+    /* Landscape Mode Styles for Mobile */
+    @media screen and (orientation: landscape) and (max-height: 500px) {
+      .controls {
+        padding: 0.5rem 1rem;
+        flex-wrap: nowrap;
+      }
+
+      .time {
+        order: 0;
+        flex-basis: auto;
+        margin-top: 0;
+        font-size: 0.75rem;
+        min-width: 100px;
+        padding: 0.3rem 0.6rem;
+      }
+
+      .progress-container {
+        bottom: 3.5rem;
+      }
+
+      .progress-container:hover {
+        bottom: 3.4rem;
+      }
+
+      .back-button {
+        top: 0.75rem;
+        left: 0.75rem;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+      }
+
+      .control-btn {
+        height: 2.25rem;
+        width: 2.25rem;
+      }
+
+      .control-select {
+        font-size: 0.7rem;
+        height: 2.25rem;
+        min-width: 55px;
+      }
+    }
+
+    /* Touch-friendly improvements */
+    @media (hover: none) and (pointer: coarse) {
+
+      .control-btn,
+      .control-select {
+        min-height: 44px;
+        min-width: 44px;
+      }
+
+      .progress-container {
+        height: 8px;
+        padding: 8px 0;
+      }
+
+      .progress-range {
+        height: 8px;
+      }
+
+      .progress-range::-webkit-slider-thumb {
+        width: 20px;
+        height: 20px;
+        opacity: 1;
+      }
+
+      .progress-range::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        opacity: 1;
+      }
+
+      .control-select {
+        padding: 0.6rem 2rem 0.6rem 0.8rem;
+      }
+    }
+
+    /* Very small screens */
+    @media (max-width: 360px) {
+
+      .controls-left,
+      .controls-right {
+        gap: 0.3rem;
+      }
+
+      .control-select {
+        min-width: 50px;
+        font-size: 0.65rem;
+      }
+
+      .time {
+        font-size: 0.7rem;
+        min-width: 80px;
+      }
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .controls {
+      animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Custom Scrollbar (if needed) */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.5);
+    }
+
+    /* Modern Error Overlay - Matching Index.html Notification Style */
+    .error-overlay {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10000;
+      display: none;
+      animation: slideDown 0.4s ease-out;
+    }
+
+    .error-overlay.show {
+      display: block;
+    }
+
+    .error-content {
+      background: rgba(26, 26, 46, 0.95);
+      border: 2px solid #FF6B6B;
+      border-radius: 12px;
+      padding: 16px 24px;
+      box-shadow: 
+          0 8px 32px rgba(0, 0, 0, 0.4),
+          0 0 20px rgba(255, 107, 107, 0.3);
+      backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 300px;
+      max-width: 500px;
+    }
+
+    .error-icon {
+      color: #FF6B6B;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .error-message {
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 500;
+      line-height: 1.4;
+      white-space: normal;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      font-family: 'Poppins', sans-serif;
+      flex: 1;
+    }
+
+    .error-close-btn {
+      display: none;
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+    }
+
+    /* Mobile responsive for error overlay */
+    @media (max-width: 768px) {
+      .error-overlay {
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: auto;
+        max-width: 85%;
+      }
+
+      .error-content {
+        padding: 14px 18px;
+        min-width: 260px;
+        max-width: 350px;
+        gap: 10px;
+      }
+
+      .error-icon {
+        font-size: 18px;
+      }
+
+      .error-message {
+        font-size: 0.9rem;
+        white-space: normal;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        line-height: 1.3;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .error-overlay {
+        top: 75px;
+        max-width: 90%;
+      }
+
+      .error-content {
+        padding: 12px 16px;
+        min-width: 220px;
+        max-width: 280px;
+        gap: 8px;
+      }
+
+      .error-icon {
+        font-size: 16px;
+      }
+
+      .error-message {
+        font-size: 0.85rem;
+        white-space: normal;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+      }
+    }
+
+    @media (max-width: 360px) {
+      .error-overlay {
+        top: 70px;
+        max-width: 95%;
+      }
+
+      .error-content {
+        padding: 10px 14px;
+        min-width: 200px;
+        max-width: 250px;
+      }
+
+      .error-icon {
+        font-size: 15px;
+      }
+
+      .error-message {
+        font-size: 0.8rem;
+        white-space: normal;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <button id="backButton" class="back-button">
+    <svg class="icon-small" viewBox="0 0 24 24">
+      <path d="M6 18L18 6M6 6l12 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  </button>
+
+  <div class="video-container" id="videoContainer">
+    <video id="video" playsinline webkit-playsinline autoplay></video>
+    <div class="loading" id="loading" style="display: none;">
+      <div class="loading-spinner"></div>
+    </div>
+  </div>
+
+  <div class="controls" id="controls">
+    <div class="controls-left">
+      <button id="playPause" class="control-btn" title="Play/Pause">
+        <svg id="playIcon" class="play-icon" viewBox="0 0 24 24">
+          <path d="M8 5v14l11-7z" />
+        </svg>
+      </button>
+
+      <button id="rewind" class="control-btn" title="Rewind 10s">
+        <svg class="skip-icon" viewBox="0 0 24 24">
+          <path
+            d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z" />
+        </svg>
+      </button>
+
+      <button id="forward" class="control-btn" title="Forward 10s">
+        <svg class="skip-icon" viewBox="0 0 24 24">
+          <path
+            d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"
+            transform="scale(-1, 1) translate(-24, 0)" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="controls-center">
+      <div class="time-current" id="currentTime">00:00</div>
+      <div class="progress-container" id="progressContainer">
+        <input type="range" id="progressRange" class="progress-range" min="0" max="100" value="0" step="0.1">
+      </div>
+      <div class="time-duration" id="duration">00:00</div>
+    </div>
+
+    <div class="controls-right">
+      <div class="control-group">
+        <button id="settingsBtn" class="control-btn" title="Settings">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path
+              d="M12 15.5A3.5 3.5 0 0 1 8.5 12A3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.53c.04-.32.07-.64.07-.97 0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.39-1.06-.73-1.69-.98l-.37-2.65A.506.506 0 0 0 14 2h-4c-.25 0-.46.18-.5.42l-.37 2.65c-.63.25-1.17.59-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64L4.57 11c-.04.34-.07.67-.07 1 0 .33.03.65.07.97l-2.11 1.66c-.19.15-.25.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1.01c.52.4 1.06.74 1.69.99l.37 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.37-2.65c.63-.26 1.17-.59 1.69-.99l2.49 1.01c.22.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66Z" />
+          </svg>
+          <!-- Hidden spans for internal tracking -->
+          <span id="qualityValue" style="display: none;">Auto</span>
+          <span id="speedValue" style="display: none;">1x</span>
+        </button>
+
+        <!-- Main Settings Menu -->
+        <div id="settingsMenu" class="control-options settings-menu hidden">
+          <!-- Quality Section -->
+          <div class="settings-section">
+            <button class="settings-option" id="qualitySection">
+              <span class="settings-label">Quality</span>
+              <span class="settings-current" id="currentQuality">Auto</span>
+            </button>
+          </div>
+
+          <!-- Speed Section -->
+          <div class="settings-section">
+            <button class="settings-option" id="speedSection">
+              <span class="settings-label">Speed:</span>
+              <span class="settings-current" id="currentSpeed">1x</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Quality Submenu -->
+        <div id="qualitySubmenu" class="control-options settings-submenu hidden">
+          <button class="settings-header" id="qualityBack">
+            <i class="fas fa-arrow-left settings-arrow-back"></i>
+            <span>Quality</span>
+          </button>
+
+          <label class="control-option">
+            <input type="radio" name="quality" value="auto" checked>
+            <span class="option-label">Auto</span>
+          </label>
+          <label class="control-option">
+            <input type="radio" name="quality" value="720">
+            <span class="option-label">720p</span>
+          </label>
+          <label class="control-option">
+            <input type="radio" name="quality" value="480">
+            <span class="option-label">480p</span>
+          </label>
+          <label class="control-option">
+            <input type="radio" name="quality" value="360">
+            <span class="option-label">360p</span>
+          </label>
+          <label class="control-option">
+            <input type="radio" name="quality" value="240">
+            <span class="option-label">240p</span>
+          </label>
+        </div>
+
+        <!-- Speed Submenu -->
+        <div id="speedSubmenu" class="control-options settings-submenu hidden">
+          <button class="settings-header" id="speedBack">
+            <i class="fas fa-arrow-left settings-arrow-back"></i>
+            <span>Speed</span>
+          </button>
+
+          <label class="control-option">
+            <input type="radio" name="speed" value="0.25">
+            <span class="option-label">0.25x</span>
+          </label>
+          <label class="control-option">
+            <input type="radio" name="speed" value="0.5">
+            <span class="option-label">0.5x</span>
+          </label>
+          <label class="control-option">
+            <input type="radio" name="speed" value="0.75">
+            <span class="option-label">0.75x</span>
+          </label>
+          <label class="control-option">
+            <input type="radio" name="speed" value="1" checked>
+            <span class="option-label">1x</span>
+          </label>
+          <label class="control-option">
+            <input type="radio" name="speed" value="1.25">
+            <span class="option-label">1.25x</span>
+          </label>
+          <label class="control-option">
+            <input type="radio" name="speed" value="1.5">
+            <span class="option-label">1.5x</span>
+          </label>
+          <label class="control-option">
+            <input type="radio" name="speed" value="2">
+            <span class="option-label">2x</span>
+          </label>
+          <label class="control-option">
+            <input type="radio" name="speed" value="2.5">
+            <span class="option-label">2.5x</span>
+          </label>
+          <label class="control-option">
+            <input type="radio" name="speed" value="3">
+            <span class="option-label">3x</span>
+          </label>
+        </div>
+      </div>
+      <audio id="silentLoop" loop muted playsinline>
+        <source src="data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCAeAAACABAAZGF0YQAAAAA="
+          type="audio/mp3">
+      </audio>
+
+      <button id="fullscreen" class="control-btn" title="Fullscreen">
+        <svg class="icon" viewBox="0 0 24 24">
+          <rect x="3" y="3" width="7" height="2" />
+          <rect x="3" y="3" width="2" height="7" />
+          <rect x="14" y="3" width="7" height="2" />
+          <rect x="19" y="3" width="2" height="7" />
+          <rect x="3" y="19" width="7" height="2" />
+          <rect x="3" y="14" width="2" height="7" />
+          <rect x="14" y="19" width="7" height="2" />
+          <rect x="19" y="14" width="2" height="7" />
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Permanent Error Message -->
+  <div id="errorOverlay" class="error-overlay">
+    <div class="error-content">
+      <div class="error-icon">
+        <i class="fas fa-exclamation-triangle"></i>
+      </div>
+      <div class="error-message" id="errorMessage">Error message will appear here</div>
+    </div>
+  </div>
+
+  <script>
+    // Secure Cookie System with HMAC Signing
+    // This prevents users from extending cookie expiry through DevTools
+    
+    // Secret key for HMAC signing (must match the one in success.html)
+    const HMAC_SECRET = 'pwavengers9936';
+    
+    // Secure Cookie Management
+    class SecureCookie {
+        static async generateHMACKey(secret) {
+            const encoder = new TextEncoder();
+            const keyData = encoder.encode(secret);
+            return await crypto.subtle.importKey(
+                'raw',
+                keyData,
+                { name: 'HMAC', hash: 'SHA-256' },
+                false,
+                ['sign', 'verify']
+            );
+        }
+        
+        static async verifySecureToken(token) {
+            try {
+                const [payloadB64, signatureB64] = token.split('.');
+                if (!payloadB64 || !signatureB64) return null;
+                
+                const payloadStr = atob(payloadB64);
+                const payload = JSON.parse(payloadStr);
+                
+                // Check expiration
+                if (Date.now() > payload.exp) {
+                    console.log('Token expired:', new Date(payload.exp));
+                    return null;
+                }
+                
+                // Verify signature
+                const encoder = new TextEncoder();
+                const payloadBytes = encoder.encode(payloadStr);
+                const signatureBytes = new Uint8Array(atob(signatureB64).split('').map(c => c.charCodeAt(0)));
+                
+                const key = await this.generateHMACKey(HMAC_SECRET);
+                const isValid = await crypto.subtle.verify('HMAC', key, signatureBytes, payloadBytes);
+                
+                if (!isValid) {
+                    console.log('Invalid token signature');
+                    return null;
+                }
+                
+                return payload;
+            } catch (error) {
+                console.log('Token verification failed:', error);
+                return null;
+            }
+        }
+    }
+    
+    // Helper function to get cookie
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+    
+    // Secure access validation
+    (async function() {
+        const secureToken = getCookie('pwavengers-key');
+        
+        if (!secureToken) {
+            console.log('No secure token found, redirecting to key generation');
+            window.location.replace('generate-key.html');
+            return;
+        }
+        
+        const payload = await SecureCookie.verifySecureToken(secureToken);
+        
+        if (!payload || payload.data !== 'success') {
+            console.log('Invalid or expired secure token, redirecting to key generation');
+            // Remove invalid token
+            document.cookie = 'pwavengers-key=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Strict';
+            window.location.replace('generate-key.html');
+            return;
+        }
+        
+        console.log('User has valid secure access to Website C');
+        console.log('Token expires:', new Date(payload.exp));
+    })();
+</script>
+
+  <script>
+    // CONSOLE
+    const originalConsole = {
+log: console.log,
+warn: console.warn,
+error: console.error,
+info: console.info,
+debug: console.debug
+};
+
+originalConsole.log('%c💀 %c𝕀ℕ𝕊ℙ𝔼ℂ𝕋 ??', 
+'font-size: 50px;',
+'color: #ff0000; font-size: 50px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);'
+);
+originalConsole.log('%c😂 %c𝕂𝕪𝕒 𝕄𝕚𝕝𝕖𝕘𝕒 𝕀𝕟𝕤𝕡𝕖𝔠𝕥 𝕂𝕒𝕣𝕜𝕖 ?', 
+'font-size: 30px;',
+'color: #ff6b6b; font-size: 30px; font-weight: bold;'
+);
+originalConsole.log('%c✔️ %cℙ𝕒𝕕𝕙𝕒𝕚 𝕂𝕒𝕣𝕝𝕠 ℂ𝕙𝕦𝕡𝔠𝕙𝕒𝕡 !', 
+'font-size: 30px;',
+'color: #ff9500; font-size: 30px; font-weight: bold;'
+);
+
+console.log = function() {};
+console.warn = function() {};
+console.error = function() {};
+console.info = function() {};
+console.debug = function() {};
+console.trace = function() {};
+console.table = function() {};
+console.group = function() {};
+console.groupEnd = function() {};
+console.time = function() {};
+console.timeEnd = function() {};
+console.count = function() {};
+console.assert = function() {};
+console.dir = function() {};
+console.dirxml = function() {};
+console.profile = function() {};
+console.profileEnd = function() {};
+console.timeStamp = function() {};
+console.clear = function() {};
+</script>
+<script>
+  const redirectUrl = 'https://t.me/pwXavengers';
+  const checkInterval = 500;
+  let hasRedirected = false;
+  
+  function isDevToolsOpen() {
+      // Higher threshold to avoid false positives from browser UI or extensions
+      const widthThreshold = window.outerWidth - window.innerWidth > 800;
+      const heightThreshold = window.outerHeight - window.innerHeight > 800;
+      return widthThreshold || heightThreshold;
+  }
+  
+  function checkDevTools() {
+      if (isDevToolsOpen() && !hasRedirected) {
+          hasRedirected = true;
+          window.location.replace(redirectUrl);
+      }
+  }
+  
+  // Delay initial check to allow window sizes to stabilize
+  setTimeout(() => {
+      checkDevTools();
+      // Start periodic checks after initial delay
+      setInterval(checkDevTools, checkInterval);
+  }, 1000);
+      </script>
+
+  <script>
+    class ModernVideoPlayer {
+      constructor() {
+        this.initializeElements();
+        this.initializeState();
+        this.setupEventListeners();
+        this.loadVideo();
+      }
+
+      initializeElements() {
+        this.video = document.getElementById("video");
+        this.controls = document.getElementById("controls");
+        this.progressRange = document.getElementById("progressRange");
+        this.progressContainer = document.getElementById("progressContainer");
+        this.playIcon = document.getElementById("playIcon");
+        this.backButton = document.getElementById("backButton");
+        this.errorOverlay = document.getElementById("errorOverlay");
+        this.errorMessage = document.getElementById("errorMessage");
+        this.currentTimeDisplay = document.getElementById("currentTime");
+        this.durationDisplay = document.getElementById("duration");
+        this.playPauseBtn = document.getElementById("playPause");
+        this.rewindBtn = document.getElementById("rewind");
+        this.forwardBtn = document.getElementById("forward");
+        this.fullscreenBtn = document.getElementById("fullscreen");
+        this.loading = document.getElementById("loading");
+
+        // Settings controls - unified interface
+        this.settingsBtn = document.getElementById("settingsBtn");
+        this.settingsMenu = document.getElementById("settingsMenu");
+        this.qualitySubmenu = document.getElementById("qualitySubmenu");
+        this.speedSubmenu = document.getElementById("speedSubmenu");
+
+        this.qualitySection = document.getElementById("qualitySection");
+        this.speedSection = document.getElementById("speedSection");
+        this.qualityBack = document.getElementById("qualityBack");
+        this.speedBack = document.getElementById("speedBack");
+
+        this.qualityRadios = this.qualitySubmenu.querySelectorAll('input[name="quality"]');
+        this.speedRadios = this.speedSubmenu.querySelectorAll('input[name="speed"]');
+
+        this.qualityValue = document.getElementById("qualityValue");
+        this.speedValue = document.getElementById("speedValue");
+        this.currentQuality = document.getElementById("currentQuality");
+        this.currentSpeed = document.getElementById("currentSpeed");
+      }
+
+      // ✅ Good: This is your state initialization method
+      initializeState() {
+        this.isFullscreen = false;
+        this.controlsVisible = true;
+        this.hideTimer = null;
+        this.isMouseMoving = false;
+        this.mouseMoveTimeout = null;
+        this.orientationLocked = false;
+        this.wakeLock = null;
+        this.isWakeLockSupported = 'wakeLock' in navigator;
+        this.availableQualities = [];
+        this.hlsLevels = [];
+        this.player = null;
+        this.pallyconCustomDataToken = null;
+
+        const params = new URLSearchParams(window.location.search);
+        const encrypted = params.get("encrypted");
+        const iv = params.get("iv");
+        const pallyEncrypted = params.get("pally_data");
+        const pallyIv = params.get("pally_iv");
+        const key = "$2y$10$YgSaj3OmNEt/PLyk47Zq.uPi62W4/l2DLOKEEIkfgyxZXdITbYE1C";
+
+        // Decrypt video URL
+        if (encrypted && iv) {
+          try {
+            const decryptedUrl = this.decryptAESCBC(encrypted, iv, key);
+            this.videoURL = decryptedUrl;
+          } catch (err) {
+            console.error("Video URL decryption failed:", err);
+            this.showErrorOverlay("Invalid video stream. Please wait.");
+          }
+        } else {
+          this.videoURL = params.get("playurl");
+        }
+
+        // Decrypt PallyCon data
+        this.pallyData = null;
+        this.pallyClearKeys = null;
+
+        if (pallyEncrypted && pallyIv) {
+          try {
+            const decryptedPallyBase64 = this.decryptAESCBC(pallyEncrypted, pallyIv, key);
+            this.pallyconCustomDataToken = decryptedPallyBase64; // Store the token
+            const decoded = atob(decryptedPallyBase64);
+            const parsed = JSON.parse(decoded);
+
+            this.pallyData = parsed;
+
+            // Try to extract ClearKey from policy if applicable
+            try {
+              const policyDecoded = atob(parsed.policy);
+              try {
+                const asJson = JSON.parse(policyDecoded);
+                if (typeof asJson === "object") {
+                  this.pallyClearKeys = asJson;
+                }
+              } catch {
+                const [kid, key] = policyDecoded.split(":");
+                if (kid && key) {
+                  this.pallyClearKeys = {
+                    [kid.toLowerCase().replace(/-/g, "")]: key
+                  };
+                }
+              }
+            } catch (err) {
+              console.warn("Policy field is not base64-decoded JSON:", err);
+            }
+
+          } catch (err) {
+            console.warn("Failed to decrypt or parse pally_data:", err);
+          }
+        }
+      }
+
+      // ✅ Good: Define this *outside* of initializeState()
+      async requestWakeLock() {
+        if (this.isWakeLockSupported) {
+          try {
+            this.wakeLock = await navigator.wakeLock.request('screen');
+            console.log("Wake lock active");
+
+            this.wakeLock.addEventListener('release', () => {
+              console.log("Wake lock was released, trying to reacquire...");
+              this.requestWakeLock(); // Attempt to re-acquire
+            });
+
+            document.addEventListener("visibilitychange", () => {
+              if (document.visibilityState === "visible" && !this.video.paused) {
+                this.requestWakeLock();
+              }
+            });
+
+          } catch (err) {
+            console.error("Failed to acquire wake lock:", err);
+          }
+        }
+      }
+
+      releaseWakeLock() {
+        if (this.wakeLock) {
+          this.wakeLock.release().then(() => {
+            this.wakeLock = null;
+            console.log("Wake lock manually released");
+          });
+        }
+      }
+
+
+      setupEventListeners() {
+        // Video events
+        this.video.addEventListener('loadstart', () => this.showLoading());
+        this.video.addEventListener('loadeddata', () => this.hideLoading());
+        this.video.addEventListener('timeupdate', () => this.updateProgress());
+        this.video.addEventListener('loadedmetadata', () => this.updateTimeDisplay());
+        this.video.addEventListener('waiting', () => this.showLoading());
+        this.video.addEventListener('playing', () => this.hideLoading());
+
+        // Control events
+        this.playPauseBtn.addEventListener('click', () => this.togglePlay());
+        this.rewindBtn.addEventListener('click', () => this.seekRelative(-10));
+        this.forwardBtn.addEventListener('click', () => this.seekRelative(10));
+        this.fullscreenBtn.addEventListener('click', () => this.toggleFullscreen());
+        this.backButton.addEventListener('click', () => this.goBack());
+        // Range input event listeners for the new seekbar
+        this.progressRange.addEventListener('input', () => this.handleProgressChange());
+        this.progressRange.addEventListener('change', () => this.handleProgressChange());
+
+        // Settings interface - unified controls
+        this.settingsBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          // If any menu is open, close all menus
+          if (!this.settingsMenu.classList.contains('hidden') ||
+            !this.qualitySubmenu.classList.contains('hidden') ||
+            !this.speedSubmenu.classList.contains('hidden')) {
+            this.hideAllMenus();
+          } else {
+            // If all menus are closed, show main settings menu
+            this.showSettingsMenu();
+          }
+        });
+
+        // Quality section click - show quality submenu
+        this.qualitySection.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.showQualitySubmenu();
+        });
+
+        // Speed section click - show speed submenu
+        this.speedSection.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.showSpeedSubmenu();
+        });
+
+        // Back buttons
+        this.qualityBack.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.showSettingsMenu();
+        });
+
+        this.speedBack.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.showSettingsMenu();
+        });
+
+        // Quality radio buttons
+        this.qualityRadios.forEach(radio => {
+          radio.addEventListener("change", () => {
+            if (radio.checked) {
+              this.handleQualityChange(radio.value);
+              const labelText = radio.nextElementSibling.textContent;
+              this.qualityValue.textContent = labelText;
+              this.currentQuality.textContent = labelText;
+              // Auto-close menu after selection
+              setTimeout(() => this.hideAllMenus(), 300);
+            }
+          });
+        });
+
+        // Speed radio buttons
+        this.speedRadios.forEach(radio => {
+          radio.addEventListener("change", () => {
+            if (radio.checked) {
+              this.video.playbackRate = parseFloat(radio.value);
+              const labelText = radio.nextElementSibling.textContent;
+              this.speedValue.textContent = labelText;
+              this.currentSpeed.textContent = labelText;
+              // Auto-close menu after selection
+              setTimeout(() => this.hideAllMenus(), 300);
+            }
+          });
+        });
+
+        // Hide menus when clicking elsewhere
+        document.addEventListener("click", () => {
+          this.hideAllMenus();
+        });
+
+        // Fullscreen events
+        document.addEventListener('fullscreenchange', () => this.handleFullscreenChange());
+        document.addEventListener('webkitfullscreenchange', () => this.handleFullscreenChange());
+        document.addEventListener('mozfullscreenchange', () => this.handleFullscreenChange());
+        document.addEventListener('MSFullscreenChange', () => this.handleFullscreenChange());
+
+        // Mouse events for auto-hide functionality
+        document.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+        document.addEventListener('mouseleave', () => this.handleMouseLeave());
+
+        // Touch events for mobile
+        document.addEventListener('touchstart', () => this.handleUserActivity());
+        document.addEventListener('touchmove', () => this.handleUserActivity());
+
+        // Keyboard events
+        document.addEventListener('keydown', (e) => this.handleKeyPress(e));
+
+        // Orientation change for mobile
+        window.addEventListener('orientationchange', () => this.handleOrientationChange());
+        screen.orientation?.addEventListener('change', () => this.handleOrientationChange());
+
+        this.video.addEventListener('play', () => {
+          this.updatePlayButton(true);
+          this.requestWakeLock();
+        });
+
+        this.video.addEventListener('pause', () => {
+          this.updatePlayButton(false);
+          this.releaseWakeLock();
+        });
+
+        this.video.addEventListener('ended', () => {
+          this.releaseWakeLock();
+        });
+
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible" && !this.video.paused) {
+            this.requestWakeLock();
+          }
+        });
+      }
+
+      // ✅ Replace your entire handleQualityChange function with this
+      handleQualityChange(selectedValue) {
+        // --- HLS LOGIC ---
+        if (this.hls) {
+          if (selectedValue === "auto") {
+            this.hls.currentLevel = -1; // Auto quality
+            console.log("HLS quality set to Auto");
+          } else {
+            const targetHeight = parseInt(selectedValue);
+            let bestLevel = -1;
+            let bestMatch = Infinity;
+
+            this.hlsLevels.forEach((level, index) => {
+              const heightDiff = Math.abs(level.height - targetHeight);
+              if (heightDiff < bestMatch) {
+                bestMatch = heightDiff;
+                bestLevel = index;
+              }
+            });
+
+            if (bestLevel >= 0) {
+              this.hls.currentLevel = bestLevel;
+              console.log(`HLS quality changed to ${this.hlsLevels[bestLevel].height}p`);
+            }
+          }
+        }
+
+        // --- SHAKA PLAYER LOGIC ---
+        else if (this.player) {
+          if (selectedValue === "auto") { // "auto" is our value for Auto
+            this.player.configure({ abr: { enabled: true } });
+            console.log("Shaka quality set to Auto (ABR enabled)");
+          } else {
+            const targetHeight = parseInt(selectedValue);
+            this.player.configure({ abr: { enabled: false } });
+
+            const track = this.player.getVariantTracks().find(t => t.height === targetHeight);
+            if (track) {
+              this.player.selectVariantTrack(track, true); // clear buffer
+              console.log(`Shaka quality changed to ${track.height}p (Track ID: ${track.id})`);
+            }
+          }
+        }
+      }
+
+
+      decryptAESCBC(base64CipherText, base64Iv, keyString) {
+        const key = CryptoJS.SHA256(keyString);
+        const iv = CryptoJS.enc.Base64.parse(base64Iv);
+        const encrypted = CryptoJS.enc.Base64.parse(base64CipherText);
+
+        const decrypted = CryptoJS.AES.decrypt(
+          { ciphertext: encrypted },
+          key,
+          {
+            iv: iv,
+            mode: CryptoJS.mode.CBC,
+            padding: CryptoJS.pad.Pkcs7
+          }
+        );
+
+        return decrypted.toString(CryptoJS.enc.Utf8);
+      }
+
+
+      async loadVideo() {
+        this.showLoading();
+
+        try {
+          const urlObj = new URL(this.videoURL);
+          const isMPD = urlObj.pathname.includes(".mpd");
+
+          if (isMPD) {
+            console.log("Detected MPD file. Using Shaka Player...");
+
+            let clearKeys = null;
+
+            // Fetch ClearKey from OTP API
+            try {
+              const otpRes = await fetch(`/api/otp?mpd_url=${encodeURIComponent(this.videoURL)}`);
+              const otpData = await otpRes.json();
+              console.log("OTP API response:", otpData);
+
+              if (
+                otpData?.success &&
+                Array.isArray(otpData.data?.keys) &&
+                otpData.data.keys.length > 0
+              ) {
+                const [keyEntry] = otpData.data.keys;
+                const [kidRaw, clearKey] = keyEntry.split(":");
+                if (kidRaw && clearKey) {
+                  const kid = kidRaw.toLowerCase().replace(/-/g, "");
+                  clearKeys = { [kid]: clearKey };
+                  console.log("✅ ClearKey found:", clearKeys);
+                }
+              } else {
+                console.warn("⚠️ No keys returned from OTP API.");
+              }
+            } catch (apiErr) {
+              console.warn("OTP API error:", apiErr);
+            }
+
+            // ✅ Setup Shaka Player
+            shaka.polyfill.installAll();
+            if (!shaka.Player.isBrowserSupported()) {
+              throw new Error("Shaka Player not supported.");
+            }
+
+            this.player = new shaka.Player(this.video);
+            const player = this.player;
+
+            // Pass signed params in requests
+            const signedParams = Object.fromEntries(urlObj.searchParams.entries());
+            player.getNetworkingEngine().registerRequestFilter((type, request) => {
+              if (
+                type === shaka.net.NetworkingEngine.RequestType.MANIFEST ||
+                type === shaka.net.NetworkingEngine.RequestType.SEGMENT
+              ) {
+                const uri = new URL(request.uris[0]);
+                Object.keys(signedParams).forEach(key => {
+                  if (!uri.searchParams.has(key)) {
+                    uri.searchParams.set(key, signedParams[key]);
+                  }
+                });
+                request.uris[0] = uri.toString();
+              }
+
+              // ✅ If PallyCon Widevine is used
+              if (
+                type === shaka.net.NetworkingEngine.RequestType.LICENSE &&
+                this.pallyconCustomDataToken
+              ) {
+                // Send the raw Base64 token in the header. Do NOT stringify it.
+                request.headers['pallycon-customdata-v2'] = this.pallyconCustomDataToken;
+
+                // Set the Content-Type based on the DRM system Shaka is using.
+                // This part from the previous advice is still correct.
+                const keySystem = player.keySystem();
+                if (keySystem === 'com.widevine.alpha') {
+                  request.headers['Content-Type'] = 'application/octet-stream';
+                } else if (keySystem === 'com.microsoft.playready') {
+                  request.headers['Content-Type'] = 'text/xml';
+                }
+              }
+            });
+            // Choose DRM config
+            // ✅ CORRECTED
+            if (this.pallyData) {
+              console.log("Using PallyCon Multi-DRM.");
+              player.configure({
+                drm: {
+                  servers: {
+                    'com.widevine.alpha': 'https://license.pallycon.com/ri/licenseManager.do',
+                    'com.microsoft.playready': 'https://license.pallycon.com/ri/licenseManager.do'
+                  }
+                }
+              });
+            } else if (clearKeys) {
+              console.log("Using ClearKey DRM.");
+              player.configure({
+                drm: {
+                  clearKeys: clearKeys,
+                  servers: {}
+                }
+              });
+            }
+
+            // Shaka Error handling
+            player.addEventListener("error", e => {
+              console.error("Shaka error:", e.detail);
+            });
+
+            try {
+              await player.load(this.videoURL);
+              this.updateShakaQualityOptions();
+              console.log("✅ Shaka loaded MPD successfully.");
+              this.video.play().catch(e => console.log('Autoplay failed:', e));
+            } catch (err) {
+              console.error("Shaka load error:", err);
+              this.showErrorOverlay("Video failed to load. Please refresh.");
+            }
+
+            this.hideLoading();
+            return;
+          }
+
+          // ✅ HLS (.m3u8) Handling
+          if (window.Hls && Hls.isSupported()) {
+            console.log("Detected HLS stream. Using Hls.js...");
+            const signedParams = Object.fromEntries(urlObj.searchParams.entries());
+
+            class SignedLoader extends Hls.DefaultConfig.loader {
+              constructor(config) {
+                super(config);
+              }
+
+              load(context, config, callbacks) {
+                try {
+                  const urlObject = new URL(context.url);
+                  Object.keys(signedParams).forEach(key => {
+                    urlObject.searchParams.set(key, signedParams[key]);
+                  });
+                  context.url = urlObject.toString();
+                } catch (e) {
+                  console.error("SignedLoader URL error:", e);
+                }
+                super.load(context, config, callbacks);
+              }
+            }
+
+            this.hls = new Hls({
+              enableWorker: true,
+              lowLatencyMode: true,
+              loader: SignedLoader
+            });
+
+            this.hls.loadSource(this.videoURL);
+            this.hls.attachMedia(this.video);
+
+            this.hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
+              console.log("✅ HLS manifest parsed");
+              this.hlsLevels = data.levels;
+              this.updateQualityOptions();
+              this.video.play().catch(e => console.log('Autoplay failed:', e));
+              this.hideLoading();
+            });
+
+            this.hls.on(Hls.Events.ERROR, (event, data) => {
+              console.error("HLS error:", data);
+              if (data.fatal) {
+                this.hls.destroy();
+                this.showErrorOverlay("Video failed to load. Please refresh.");
+              }
+            });
+
+          } else if (this.video.canPlayType('application/vnd.apple.mpegurl')) {
+            // Fallback native HLS (Safari)
+            this.video.src = this.videoURL;
+            this.video.play().catch(e => console.log('Autoplay failed:', e));
+            this.hideLoading();
+          } else {
+            throw new Error("Unsupported video format.");
+          }
+
+        } catch (error) {
+          console.error("Video loading error:", error);
+          this.hideLoading();
+          const message = (error && typeof error === "object" && "message" in error)
+            ? error.message
+            : JSON.stringify(error) || "Unknown error occurred.";
+          this.showErrorOverlay("Video failed to load. Please refresh.");
+        }
+      }
+
+
+      updateShakaQualityOptions() {
+        if (!this.player) return;
+
+        // Find the "auto" radio button and check it by default
+        const autoRadio = Array.from(this.qualityRadios).find(radio => radio.value === "auto");
+        if (autoRadio) {
+          autoRadio.checked = true;
+          // Update the displayed quality value
+          this.qualityValue.textContent = "Auto";
+        }
+
+        const tracks = this.player.getVariantTracks();
+
+        // Sort tracks by height, descending
+        tracks.sort((a, b) => b.height - a.height);
+
+        console.log('Available Shaka qualities:', tracks.map(t => t.height));
+      }
+
+
+      updateQualityOptions() {
+        if (!this.hlsLevels.length) return;
+
+        // Get available quality heights
+        const availableHeights = this.hlsLevels.map(level => level.height).filter(h => h);
+        this.availableQualities = [...new Set(availableHeights)].sort((a, b) => b - a);
+
+        // Enable/disable quality radio buttons based on availability
+        Array.from(this.qualityRadios).forEach(radio => {
+          if (radio.value === "auto") return;
+
+          const height = parseInt(radio.value);
+          const isAvailable = this.availableQualities.some(availableHeight =>
+            Math.abs(availableHeight - height) <= 50 // Allow some tolerance
+          );
+
+          radio.disabled = !isAvailable;
+          radio.parentElement.style.opacity = isAvailable ? "1" : "0.5";
+          radio.parentElement.style.pointerEvents = isAvailable ? "auto" : "none";
+        });
+
+        console.log('Available qualities:', this.availableQualities);
+      }
+
+      showLoading() {
+        this.loading.style.display = 'block';
+      }
+
+      hideLoading() {
+        this.loading.style.display = 'none';
+      }
+
+      togglePlay() {
+        if (this.video.paused) {
+          this.video.play().catch(e => console.error('Play failed:', e));
+        } else {
+          this.video.pause();
+        }
+      }
+
+      updatePlayButton(isPlaying) {
+        // Clear the SVG content
+        while (this.playIcon.firstChild) {
+          this.playIcon.removeChild(this.playIcon.firstChild);
+        }
+
+        // Create new SVG path based on play state
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+
+        if (isPlaying) {
+          // Pause icon
+          path.setAttribute("d", "M6 4h4v16H6V4zm8 0h4v16h-4V4z");
+        } else {
+          // Play icon
+          path.setAttribute("d", "M8 5v14l11-7z");
+        }
+
+        this.playIcon.appendChild(path);
+      }
+
+      seekRelative(seconds) {
+        const newTime = Math.max(0, Math.min(this.video.duration || 0, this.video.currentTime + seconds));
+        this.video.currentTime = newTime;
+      }
+
+      handleProgressClick(e) {
+        const rect = this.progressContainer.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const percentage = clickX / rect.width;
+        const newTime = percentage * (this.video.duration || 0);
+        this.video.currentTime = newTime;
+      }
+
+      handleProgressChange() {
+        const percentage = this.progressRange.value;
+        const newTime = (percentage / 100) * (this.video.duration || 0);
+        this.video.currentTime = newTime;
+        // Update the CSS custom property for immediate visual feedback
+        this.progressRange.style.setProperty('--seek-fill', `${percentage}%`);
+      }
+
+      updateProgress() {
+        const duration = this.video.duration || 0;
+        const currentTime = this.video.currentTime || 0;
+        const percentage = duration ? (currentTime / duration) * 100 : 0;
+
+        // Update the range input value
+        this.progressRange.value = percentage;
+        // Update the CSS custom property for the gradient fill
+        this.progressRange.style.setProperty('--seek-fill', `${percentage}%`);
+        this.updateTimeDisplay();
+      }
+
+      updateTimeDisplay() {
+        const current = this.video.currentTime || 0;
+        const duration = this.video.duration || 0;
+
+        this.currentTimeDisplay.textContent = this.formatTime(current);
+        this.durationDisplay.textContent = this.formatTime(duration);
+      }
+
+      formatTime(seconds) {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = Math.floor(seconds % 60);
+
+        if (hours > 0) {
+          return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+        return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      }
+
+      async toggleFullscreen() {
+        try {
+          const element = document.documentElement;
+
+          if (!document.fullscreenElement) {
+            // First request fullscreen
+            if (element.requestFullscreen) {
+              await element.requestFullscreen();
+            } else if (element.webkitRequestFullscreen) {
+              await element.webkitRequestFullscreen();
+            } else if (element.mozRequestFullScreen) {
+              await element.mozRequestFullScreen();
+            } else if (element.msRequestFullscreen) {
+              await element.msRequestFullscreen();
+            }
+
+            // Then lock orientation AFTER fullscreen
+            if (this.isMobile() && screen.orientation?.lock) {
+              try {
+                await screen.orientation.lock('landscape');
+                this.orientationLocked = true;
+              } catch (err) {
+                console.warn('Orientation lock failed:', err);
+              }
+            }
+
+          } else {
+            // Exit fullscreen
+            if (document.exitFullscreen) {
+              await document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+              await document.webkitExitFullscreen();
+            } else if (document.mozCancelFullScreen) {
+              await document.mozCancelFullScreen();
+            } else if (document.msExitFullscreen) {
+              await document.msExitFullscreen();
+            }
+
+            // Unlock orientation
+            if (this.isMobile() && this.orientationLocked && screen.orientation?.unlock) {
+              screen.orientation.unlock();
+              this.orientationLocked = false;
+            }
+          }
+        } catch (error) {
+          console.error('Fullscreen toggle failed:', error);
+        }
+      }
+
+      async lockOrientationLandscape() {
+        try {
+          if (screen.orientation && screen.orientation.lock) {
+            await screen.orientation.lock('landscape');
+            this.orientationLocked = true;
+          } else if (screen.lockOrientation) {
+            screen.lockOrientation('landscape');
+            this.orientationLocked = true;
+          } else if (screen.webkitLockOrientation) {
+            screen.webkitLockOrientation('landscape');
+            this.orientationLocked = true;
+          } else if (screen.mozLockOrientation) {
+            screen.mozLockOrientation('landscape');
+            this.orientationLocked = true;
+          }
+        } catch (error) {
+          console.log('Orientation lock not supported or failed:', error);
+        }
+      }
+
+      async unlockOrientation() {
+        try {
+          if (screen.orientation && screen.orientation.unlock) {
+            screen.orientation.unlock();
+          } else if (screen.unlockOrientation) {
+            screen.unlockOrientation();
+          } else if (screen.webkitUnlockOrientation) {
+            screen.webkitUnlockOrientation();
+          } else if (screen.mozUnlockOrientation) {
+            screen.mozUnlockOrientation();
+          }
+          this.orientationLocked = false;
+        } catch (error) {
+          console.log('Orientation unlock failed:', error);
+        }
+      }
+
+      isMobile() {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+          (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
+      }
+
+      handleFullscreenChange() {
+        const isCurrentlyFullscreen = Boolean(
+          document.fullscreenElement ||
+          document.webkitFullscreenElement ||
+          document.mozFullScreenElement ||
+          document.msFullscreenElement
+        );
+
+        this.isFullscreen = isCurrentlyFullscreen;
+
+        if (this.isFullscreen) {
+          document.body.classList.add('fullscreen-mode');
+          this.startAutoHideTimer();
+        } else {
+          document.body.classList.remove('fullscreen-mode', 'show-cursor');
+          this.showControls();
+          this.clearAutoHideTimer();
+
+          // Unlock orientation when exiting fullscreen
+          if (this.isMobile() && this.orientationLocked) {
+            this.unlockOrientation();
+          }
+        }
+      }
+
+      handleOrientationChange() {
+        // Small delay to ensure orientation change is complete
+        setTimeout(() => {
+          if (this.isFullscreen && this.isMobile()) {
+            // Ensure we're in landscape when in fullscreen on mobile
+            const orientation = screen.orientation?.angle || window.orientation;
+            if (orientation === 0 || orientation === 180) {
+              // Portrait mode detected, try to lock to landscape
+              this.lockOrientationLandscape();
+            }
+          }
+        }, 100);
+      }
+
+      handleMouseMove(e) {
+        if (!this.isFullscreen) return;
+
+        this.isMouseMoving = true;
+        document.body.classList.add('show-cursor');
+        this.showControls();
+        this.startAutoHideTimer();
+
+        // Reset mouse moving state after a short delay
+        clearTimeout(this.mouseMoveTimeout);
+        this.mouseMoveTimeout = setTimeout(() => {
+          this.isMouseMoving = false;
+          document.body.classList.remove('show-cursor');
+        }, 2900);
+      }
+
+      handleMouseLeave() {
+        if (!this.isFullscreen) return;
+
+        this.isMouseMoving = false;
+        document.body.classList.remove('show-cursor');
+        this.startAutoHideTimer();
+      }
+
+      handleUserActivity() {
+        if (!this.isFullscreen) return;
+
+        this.showControls();
+        this.startAutoHideTimer();
+      }
+
+      handleKeyPress(e) {
+        switch (e.code) {
+          case 'Space':
+            e.preventDefault();
+            this.togglePlay();
+            break;
+          case 'ArrowLeft':
+            e.preventDefault();
+            this.seekRelative(-10);
+            break;
+          case 'ArrowRight':
+            e.preventDefault();
+            this.seekRelative(10);
+            break;
+          case 'KeyF':
+            e.preventDefault();
+            this.toggleFullscreen();
+            break;
+          case 'Escape':
+            if (this.isFullscreen) {
+              this.toggleFullscreen();
+            }
+            break;
+          // Quality shortcuts
+          case 'KeyQ':
+            e.preventDefault();
+            this.cycleQuality();
+            break;
+          // Speed shortcuts
+          case 'KeyS':
+            e.preventDefault();
+            this.cycleSpeed();
+            break;
+        }
+
+        if (this.isFullscreen) {
+          this.handleUserActivity();
+        }
+      }
+
+      cycleQuality() {
+        const options = Array.from(this.qualityRadios);
+        const currentIndex = Array.from(options).findIndex(opt => opt.checked);
+        const nextIndex = (currentIndex + 1) % options.length;
+
+        // Uncheck all options first
+        options.forEach(opt => opt.checked = false);
+
+        // Check the next option
+        options[nextIndex].checked = true;
+
+        // Handle the quality change
+        this.handleQualityChange(options[nextIndex].value);
+
+        // Update the displayed quality value
+        this.qualityValue.textContent = options[nextIndex].nextElementSibling.textContent;
+      }
+
+      cycleSpeed() {
+        const options = Array.from(this.speedRadios);
+        const currentIndex = Array.from(options).findIndex(opt => opt.checked);
+        const nextIndex = (currentIndex + 1) % options.length;
+
+        // Uncheck all options first
+        options.forEach(opt => opt.checked = false);
+
+        // Check the next option
+        options[nextIndex].checked = true;
+
+        // Set the playback rate
+        this.video.playbackRate = parseFloat(options[nextIndex].value);
+
+        // Update the displayed speed value
+        this.speedValue.textContent = options[nextIndex].nextElementSibling.textContent;
+      }
+
+      startAutoHideTimer() {
+        if (!this.isFullscreen) return;
+
+        this.clearAutoHideTimer();
+
+        this.hideTimer = setTimeout(() => {
+          if (this.isFullscreen && !this.isMouseMoving) {
+            this.hideControls();
+          }
+        }, 3000);
+      }
+
+      clearAutoHideTimer() {
+        if (this.hideTimer) {
+          clearTimeout(this.hideTimer);
+          this.hideTimer = null;
+        }
+      }
+
+      showControls() {
+        if (!this.controlsVisible) {
+          this.controlsVisible = true;
+          this.controls.classList.remove('hidden');
+          this.progressContainer.classList.remove('hidden');
+          this.backButton.classList.remove('hidden');
+        }
+      }
+
+      hideControls() {
+        if (this.controlsVisible) {
+          this.controlsVisible = false;
+          this.controls.classList.add('hidden');
+          this.progressContainer.classList.add('hidden');
+          this.backButton.classList.add('hidden');
+        }
+      }
+
+      goBack() {
+        // Try to go back in history, fallback to closing window
+        if (window.history.length > 1) {
+          window.history.back();
+        } else {
+          window.close();
+        }
+      }
+
+      // Permanent Error Message Methods
+      showErrorOverlay(message) {
+        this.errorMessage.textContent = message;
+        this.errorOverlay.classList.add('show');
+        // Hide video and loading elements when error is shown
+        this.video.style.display = 'none';
+        this.hideLoading();
+        // Keep controls visible but make them non-functional
+        this.showControls();
+      }
+
+      // Settings menu helper methods
+      showSettingsMenu() {
+        this.hideAllMenus();
+        this.settingsMenu.classList.remove('hidden');
+      }
+
+      showQualitySubmenu() {
+        this.hideAllMenus();
+        this.qualitySubmenu.classList.remove('hidden');
+      }
+
+      showSpeedSubmenu() {
+        this.hideAllMenus();
+        this.speedSubmenu.classList.remove('hidden');
+      }
+
+      hideAllMenus() {
+        this.settingsMenu.classList.add('hidden');
+        this.qualitySubmenu.classList.add('hidden');
+        this.speedSubmenu.classList.add('hidden');
+      }
+    }
+
+    document.getElementById("silentLoop").play().catch(() => {
+      console.log("Silent loop fallback failed");
+    });
+
+    // Initialize the video player when the DOM is loaded
+    document.addEventListener('DOMContentLoaded', () => {
+      new ModernVideoPlayer();
+    });
+
+    // Prevent context menu on video
+    document.addEventListener('contextmenu', (e) => {
+      if (e.target.tagName === 'VIDEO') {
+        e.preventDefault();
+      }
+    });
+
+    // Prevent text selection
+    document.addEventListener('selectstart', (e) => {
+      e.preventDefault();
+    });
+  </script>
+</body>
+
+</html>
