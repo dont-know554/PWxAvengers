@@ -46,6 +46,14 @@
     <input type="text" id="searchInput" placeholder="🔍 Enter Batch name" />
 
     <div class="grid" id="main"></div>
+    
+    <!-- Load More Batches Button -->
+    <div id="loadMoreBatchesWrapper" style="text-align: center; margin: 20px 0; display: none;">
+      <button id="loadMoreBatchesBtn" class="load-more-btn">
+        <i class="fas fa-plus"></i> Load More Batches
+      </button>
+    </div>
+    
     <div class="back-btn" id="backBtn" style="display:none;">← Back</div>
 
     <div class="today-classes-wrapper" id="todayWrapper" style="display: none;">
@@ -528,7 +536,9 @@
       try {
         // 🚀 SIMPLIFIED: Server handles all filtering now
         let query = currentQuery ? `&q=${encodeURIComponent(currentQuery)}` : '';
-        const apiUrl = `${API_BASE}/api/batches?page=${currentPage}&limit=50${query}`;
+        // Use limit=12 for initial load, but keep 50 for search to show all results
+        const limit = currentQuery ? 50 : 12;
+        const apiUrl = `${API_BASE}/api/batches?page=${currentPage}&limit=${limit}${query}`;
         
         console.log('📡 Fetching server-filtered batches from:', apiUrl);
 
@@ -553,6 +563,11 @@
         if (serverFilteredBatches.length === 0) {
           renderNoResults();
           hasMore = false;
+          // Hide Load More button when no results
+          const loadMoreWrapper = document.getElementById('loadMoreBatchesWrapper');
+          if (loadMoreWrapper) {
+            loadMoreWrapper.style.display = 'none';
+          }
           setTimeout(() => {
             showLoader(false);
           }, 800);
@@ -566,6 +581,17 @@
           hasMore = data.hasMore || false;
           if (data.hasMore) {
             currentPage++;
+          }
+          
+          // Show/hide Load More button based on hasMore and search state
+          const loadMoreWrapper = document.getElementById('loadMoreBatchesWrapper');
+          if (loadMoreWrapper) {
+            // Only show Load More button when not searching and there are more batches
+            if (!currentQuery && hasMore) {
+              loadMoreWrapper.style.display = 'block';
+            } else {
+              loadMoreWrapper.style.display = 'none';
+            }
           }
         }
       } catch (err) {
@@ -1194,6 +1220,14 @@
       } else {
         // Otherwise, show batches view (default)
         showBatchesView();
+      }
+      
+      // Add event listener for Load More Batches button
+      const loadMoreBatchesBtn = document.getElementById('loadMoreBatchesBtn');
+      if (loadMoreBatchesBtn) {
+        loadMoreBatchesBtn.addEventListener('click', () => {
+          loadBatches({ reset: false }); // Load next page of batches
+        });
       }
     });
 
