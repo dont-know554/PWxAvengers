@@ -434,9 +434,7 @@
         backBtn.onclick = handleBackNavigation;
       }
 
-      // 🔻 Hide load more batches button when leaving the main batches page
-      const loadMoreBtnWrapper = document.getElementById("loadMoreBatchesWrapper");
-      if (loadMoreBtnWrapper) loadMoreBtnWrapper.style.display = "none";
+      // Load More button visibility is now handled in the batch loading logic
     }
 
 
@@ -585,13 +583,24 @@
           
           // Show/hide Load More button based on hasMore and search state
           const loadMoreWrapper = document.getElementById('loadMoreBatchesWrapper');
+          console.log('🔘 Load More Button Debug:', {
+            hasMore: hasMore,
+            currentQuery: currentQuery,
+            buttonExists: !!loadMoreWrapper,
+            totalBatches: allBatches.length
+          });
+          
           if (loadMoreWrapper) {
             // Only show Load More button when not searching and there are more batches
             if (!currentQuery && hasMore) {
+              console.log('✅ Showing Load More button');
               loadMoreWrapper.style.display = 'block';
             } else {
+              console.log('❌ Hiding Load More button - Query:', currentQuery, 'HasMore:', hasMore);
               loadMoreWrapper.style.display = 'none';
             }
+          } else {
+            console.error('❌ Load More button wrapper not found!');
           }
         }
       } catch (err) {
