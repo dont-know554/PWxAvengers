@@ -1416,6 +1416,7 @@ console.clear = function() {};
         this.hlsLevels = [];
         this.player = null;
         this.pallyconCustomDataToken = null;
+        this.decryptedDrmInfo = null; // This will hold keys from your new 'data' param
 
         const params = new URLSearchParams(window.location.search);
         const encrypted = params.get("encrypted");
@@ -1423,18 +1424,46 @@ console.clear = function() {};
         const pallyEncrypted = params.get("pally_data");
         const pallyIv = params.get("pally_iv");
         const key = "$2y$10$YgSaj3OmNEt/PLyk47Zq.uPi62W4/l2DLOKEEIkfgyxZXdITbYE1C";
+        const newDataEnc = params.get("data");
+        const newDataIv = params.get("iv");
 
-        // Decrypt video URL
-        if (encrypted && iv) {
+        if (newDataEnc && newDataIv) {
+          console.log("✅ Found 'data' and 'iv' parameters. Decrypting...");
           try {
-            const decryptedUrl = this.decryptAESCBC(encrypted, iv, key);
-            this.videoURL = decryptedUrl;
+            const decryptedJson = this.decryptAESCBC(newDataEnc, newDataIv, key);
+            const parsedObject = JSON.parse(decryptedJson);
+
+            // Check for success and access the nested 'data' object
+            if (parsedObject.success && parsedObject.data) {
+              const drmData = parsedObject.data; // This is the nested object
+
+              this.videoURL = drmData.url; // Access url from the nested object
+              
+              // Access keys from the nested object
+              if (drmData.keys && drmData.keys.length > 0) {
+                const [kid, key] = drmData.keys[0].split(":");
+                this.decryptedDrmInfo = { [kid]: key };
+                console.log("Successfully extracted URL and Keys:", { url: this.videoURL, keys: this.decryptedDrmInfo });
+              }
+            } else {
+               console.error("Decryption successful, but the JSON format is not correct.", parsedObject);
+            }
           } catch (err) {
-            console.error("Video URL decryption failed:", err);
-            this.showErrorOverlay("Invalid video stream. Please wait.");
+            console.error("Failed to decrypt or parse the 'data' parameter:", err);
           }
         } else {
-          this.videoURL = params.get("playurl");
+          // Decrypt video URL
+          if (encrypted && iv) {
+            try {
+              const decryptedUrl = this.decryptAESCBC(encrypted, iv, key);
+              this.videoURL = decryptedUrl;
+            } catch (err) {
+              console.error("Video URL decryption failed:", err);
+              this.showErrorOverlay("Invalid video stream. Please wait.");
+            }
+          } else {
+            this.videoURL = params.get("playurl");
+          }
         }
 
         // Decrypt PallyCon data
@@ -1718,29 +1747,30 @@ console.clear = function() {};
 
             let clearKeys = null;
 
-            // Fetch ClearKey from OTP API
-            try {
-              const otpRes = await fetch(`https://pwxavengers-proxy.pw-avengers.workers.dev/api/otp?mpd_url=${encodeURIComponent(this.videoURL)}`);
-              const otpData = await otpRes.json();
-              console.log("OTP API response:", otpData);
-
-              if (
-                otpData?.success &&
-                Array.isArray(otpData.data?.keys) &&
-                otpData.data.keys.length > 0
-              ) {
-                const [keyEntry] = otpData.data.keys;
-                const [kidRaw, clearKey] = keyEntry.split(":");
-                if (kidRaw && clearKey) {
-                  const kid = kidRaw.toLowerCase().replace(/-/g, "");
-                  clearKeys = { [kid]: clearKey };
-                  console.log("✅ ClearKey found:", clearKeys);
+            // Priority 1: Use keys from the new 'data' parameter if they exist.
+            if (this.decryptedDrmInfo) {
+              console.log("Using ClearKeys from 'data' parameter.");
+              clearKeys = this.decryptedDrmInfo;
+            } 
+            // Priority 2: Use keys from the 'pally_data' policy if they exist.
+            else if (this.pallyClearKeys) {
+              console.log("Using ClearKeys from 'pally_data' policy.");
+              clearKeys = this.pallyClearKeys;
+            }
+            // Priority 3: Fallback to the OTP API to fetch keys.
+            else {
+              console.log("No pre-loaded keys found. Attempting to fetch from OTP API.");
+              try {
+                const otpRes = await fetch(`https://pwxavengers-proxy.pw-avengers.workers.dev/api/otp?mpd_url=${encodeURIComponent(this.videoURL)}`);
+                const otpData = await otpRes.json();
+                if (otpData?.success && otpData.data?.keys?.length > 0) {
+                  const [kidRaw, clearKey] = otpData.data.keys[0].split(":");
+                  clearKeys = { [kidRaw.toLowerCase().replace(/-/g, "")]: clearKey };
+                  console.log("✅ Successfully fetched keys from OTP API.");
                 }
-              } else {
-                console.warn("⚠️ No keys returned from OTP API.");
+              } catch (apiErr) {
+                console.warn("OTP API fetch failed:", apiErr);
               }
-            } catch (apiErr) {
-              console.warn("OTP API error:", apiErr);
             }
 
             // ✅ Setup Shaka Player

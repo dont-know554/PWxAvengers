@@ -46,14 +46,6 @@
     <input type="text" id="searchInput" placeholder="🔍 Enter Batch name" />
 
     <div class="grid" id="main"></div>
-    
-    <!-- Load More Batches Button -->
-    <div id="loadMoreBatchesWrapper" style="text-align: center; margin: 20px 0; display: none;">
-      <button id="loadMoreBatchesBtn" class="load-more-btn">
-        <i class="fas fa-plus"></i> Load More Batches
-      </button>
-    </div>
-    
     <div class="back-btn" id="backBtn" style="display:none;">← Back</div>
 
     <div class="today-classes-wrapper" id="todayWrapper" style="display: none;">
@@ -434,7 +426,9 @@
         backBtn.onclick = handleBackNavigation;
       }
 
-      // Load More button visibility is now handled in the batch loading logic
+      // 🔻 Hide load more batches button when leaving the main batches page
+      const loadMoreBtnWrapper = document.getElementById("loadMoreBatchesWrapper");
+      if (loadMoreBtnWrapper) loadMoreBtnWrapper.style.display = "none";
     }
 
 
@@ -534,9 +528,7 @@
       try {
         // 🚀 SIMPLIFIED: Server handles all filtering now
         let query = currentQuery ? `&q=${encodeURIComponent(currentQuery)}` : '';
-        // Use limit=12 for initial load, but keep 50 for search to show all results
-        const limit = currentQuery ? 50 : 12;
-        const apiUrl = `${API_BASE}/api/batches?page=${currentPage}&limit=${limit}${query}`;
+        const apiUrl = `${API_BASE}/api/batches?page=${currentPage}&limit=50${query}`;
         
         console.log('📡 Fetching server-filtered batches from:', apiUrl);
 
@@ -561,11 +553,6 @@
         if (serverFilteredBatches.length === 0) {
           renderNoResults();
           hasMore = false;
-          // Hide Load More button when no results
-          const loadMoreWrapper = document.getElementById('loadMoreBatchesWrapper');
-          if (loadMoreWrapper) {
-            loadMoreWrapper.style.display = 'none';
-          }
           setTimeout(() => {
             showLoader(false);
           }, 800);
@@ -579,28 +566,6 @@
           hasMore = data.hasMore || false;
           if (data.hasMore) {
             currentPage++;
-          }
-          
-          // Show/hide Load More button based on hasMore and search state
-          const loadMoreWrapper = document.getElementById('loadMoreBatchesWrapper');
-          console.log('🔘 Load More Button Debug:', {
-            hasMore: hasMore,
-            currentQuery: currentQuery,
-            buttonExists: !!loadMoreWrapper,
-            totalBatches: allBatches.length
-          });
-          
-          if (loadMoreWrapper) {
-            // Only show Load More button when not searching and there are more batches
-            if (!currentQuery && hasMore) {
-              console.log('✅ Showing Load More button');
-              loadMoreWrapper.style.display = 'block';
-            } else {
-              console.log('❌ Hiding Load More button - Query:', currentQuery, 'HasMore:', hasMore);
-              loadMoreWrapper.style.display = 'none';
-            }
-          } else {
-            console.error('❌ Load More button wrapper not found!');
           }
         }
       } catch (err) {
@@ -1087,22 +1052,81 @@
                   return;
                 }
 
-                const scheduleId = item._id;
-                const res = await fetch(`${API_BASE}/api/url?batch_id=${currentBatchId}&schedule_id=${scheduleId}`);
-                const altData = await res.json();
+                // Try the new API endpoint as a third option
+                const fetchApi1 = async () => {
+                  // First API endpoint (existing)
+                  const scheduleId = item._id;
+                  const res = await fetch(`${API_BASE}/api/url?batch_id=${currentBatchId}&schedule_id=${scheduleId}`);
+                  const altData = await res.json();
 
-                if (altData.success && altData.signed_url && altData.video_id) {
-                  const urlParams = new URLSearchParams({
-                    encrypted: altData.signed_url,
-                    iv: altData.video_id
-                  });
-                  if (altData.pally_data && altData.pally_iv) {
-                    urlParams.append('pally_data', altData.pally_data);
-                    urlParams.append('pally_iv', altData.pally_iv);
+                  if (altData.success && altData.signed_url && altData.video_id) {
+                    const urlParams = new URLSearchParams({
+                      encrypted: altData.signed_url,
+                      iv: altData.video_id
+                    });
+                    if (altData.pally_data && altData.pally_iv) {
+                      urlParams.append('pally_data', altData.pally_data);
+                      urlParams.append('pally_iv', altData.pally_iv);
+                    }
+                    return { type: 'redirect', url: `player?${urlParams.toString()}` };
                   }
-                  window.location.href = `player?${urlParams.toString()}`;
-                } else {
-                  alert("⚠️ Video not available from either source.");
+                  throw new Error('API 1 did not provide a valid video URL.');
+                };
+
+                const fetchApi2 = async () => {
+                  // Second API endpoint (existing)
+                  const resp = await fetch(`${API_BASE}/api/video/stream-info?${params}`);
+                  const data = await resp.json();
+
+                  if (data.youtube && data.videoUrl) {
+                    return { type: 'open', url: data.videoUrl };
+                  }
+
+                  if (data.success && data.signed_url && data.video_id) {
+                    const urlParams = new URLSearchParams({
+                      encrypted: data.signed_url,
+                      iv: data.video_id
+                    });
+                    return { type: 'open', url: `player?${urlParams}` };
+                  }
+                  throw new Error('API 2 did not provide a valid video URL.');
+                };
+
+                const fetchApi3 = async () => {
+                  // Third API endpoint (new) - using our proxy
+                  const scheduleId = item._id;
+                  const res = await fetch(`${API_BASE}/api/video-data?batchId=${currentBatchId}&scheduleId=${scheduleId}`);
+                  const responseJson = await res.json();
+
+                  if (responseJson.success && responseJson.data && responseJson.iv) {
+                    const urlParams = new URLSearchParams({
+                      data: responseJson.data,
+                      iv: responseJson.iv
+                    });
+                    return { type: 'redirect', url: `player?${urlParams}` };
+                  }
+                  throw new Error('API 3 did not provide valid video data.');
+                };
+
+                // Run all API calls in parallel and get the first success
+                try {
+                  const result = await Promise.any([
+                    fetchApi1(),
+                    fetchApi2(),
+                    fetchApi3()
+                  ]);
+
+                  // Act on the first successful result
+                  if (result.type === 'open') {
+                    window.open(result.url, '_blank');
+                    showLoader(false);
+                  } else if (result.type === 'redirect') {
+                    window.location.href = result.url;
+                  }
+                } catch (error) {
+                  // This block executes only if ALL promises fail
+                  console.error("All video sources failed to load:", error);
+                  alert("⚠️ Video not available from any source.");
                 }
               } catch (err) {
                 console.error("Video load failed:", err);
@@ -1229,14 +1253,6 @@
       } else {
         // Otherwise, show batches view (default)
         showBatchesView();
-      }
-      
-      // Add event listener for Load More Batches button
-      const loadMoreBatchesBtn = document.getElementById('loadMoreBatchesBtn');
-      if (loadMoreBatchesBtn) {
-        loadMoreBatchesBtn.addEventListener('click', () => {
-          loadBatches({ reset: false }); // Load next page of batches
-        });
       }
     });
 
