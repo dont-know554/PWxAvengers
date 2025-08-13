@@ -345,16 +345,26 @@
     }
 
     function sortAndRenderBatches() {
-      // Sort batches: favorites first, then others
-      const sortedBatches = [...allBatches].sort((a, b) => {
-        const aBookmarked = isBatchBookmarked(a.batchId);
-        const bBookmarked = isBatchBookmarked(b.batchId);
-
-        // If both are either bookmarked or not, maintain original order
-        if (aBookmarked && !bBookmarked) return -1;
-        if (!aBookmarked && bBookmarked) return 1;
-        return 0;
+      // Separate bookmarked and non-bookmarked batches
+      const bookmarkedBatches = [];
+      const nonBookmarkedBatches = [];
+      
+      allBatches.forEach(batch => {
+        if (isBatchBookmarked(batch.batchId)) {
+          bookmarkedBatches.push(batch);
+        } else {
+          nonBookmarkedBatches.push(batch);
+        }
       });
+      
+      // Shuffle non-bookmarked batches randomly
+      for (let i = nonBookmarkedBatches.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [nonBookmarkedBatches[i], nonBookmarkedBatches[j]] = [nonBookmarkedBatches[j], nonBookmarkedBatches[i]];
+      }
+      
+      // Combine bookmarked batches (unchanged order) with shuffled non-bookmarked batches
+      const sortedBatches = [...bookmarkedBatches, ...nonBookmarkedBatches];
 
       renderBatches(sortedBatches);
     }
@@ -528,7 +538,7 @@
       try {
         // 🚀 SIMPLIFIED: Server handles all filtering now
         let query = currentQuery ? `&q=${encodeURIComponent(currentQuery)}` : '';
-        const apiUrl = `${API_BASE}/api/batches?page=${currentPage}&limit=50${query}`;
+        const apiUrl = `${API_BASE}/api/batches?page=${currentPage}&limit=1500${query}`;
         
         console.log('📡 Fetching server-filtered batches from:', apiUrl);
 
@@ -1108,12 +1118,29 @@
                   throw new Error('API 3 did not provide valid video data.');
                 };
 
+                const fetchApi4 = async () => {
+                  // Fourth API endpoint (new) - using our proxy
+                  const scheduleId = item._id;
+                  const res = await fetch(`${API_BASE}/api/video-data-alt?batchId=${currentBatchId}&scheduleId=${scheduleId}`);
+                  const responseJson = await res.json();
+
+                  if (responseJson.success && responseJson.data && responseJson.iv) {
+                    const urlParams = new URLSearchParams({
+                      data: responseJson.data,
+                      iv: responseJson.iv
+                    });
+                    return { type: 'redirect', url: `player?${urlParams}` };
+                  }
+                  throw new Error('API 4 did not provide valid video data.');
+                };
+
                 // Run all API calls in parallel and get the first success
                 try {
                   const result = await Promise.any([
                     fetchApi1(),
                     fetchApi2(),
-                    fetchApi3()
+                    fetchApi3(),
+                    fetchApi4()
                   ]);
 
                   // Act on the first successful result
