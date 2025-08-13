@@ -1107,9 +1107,9 @@ input[type="text"]::placeholder {
 
 #loadMoreBatchesBtn {
   /* Basic Setup & Font */
-  background: linear-gradient(45deg, var(--squid-pink), var(--squid-dark-blue));
-  border: 2px solid var(--squid-pink);
-  color: var(--text-primary);
+  background: linear-gradient(135deg, #0088cc, #229ED9);
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  color: white;
   font-family: 'Orbitron', monospace;
   font-size: 1.1rem;
   font-weight: 700;
@@ -1132,44 +1132,28 @@ input[type="text"]::placeholder {
   overflow: hidden;
   transition: all 0.3s ease;
   box-shadow: 
-    0 0 20px var(--glow-dark-pink),
-    0 0 30px var(--glow-pink);
-  
-  /* Prevent text selection */
+    0 4px 20px rgba(0, 136, 204, 0.4),
+    0 8px 40px rgba(0, 136, 204, 0.2);
+  text-decoration: none;
+  outline: none;
   user-select: none;
   -webkit-user-select: none;
+  animation: float 3s ease-in-out infinite;
 }
-
-/* --- Glow Animation --- */
-
-@keyframes pulse-glow {
-  0% {
-    box-shadow: 0 0 20px var(--glow-dark-pink);
-  }
-  50% {
-    box-shadow: 0 0 35px var(--glow-pink);
-  }
-  100% {
-    box-shadow: 0 0 20px var(--glow-dark-pink);
-  }
-}
-
-#loadMoreBatchesBtn {
-    animation: pulse-glow 2.5s infinite ease-in-out;
-}
-
 
 /* --- Hover and Active States --- */
 
 #loadMoreBatchesBtn:hover {
-  transform: scale(1.05);
-  border-color: var(--squid-cyan);
-  box-shadow: 0 0 40px var(--glow-cyan);
-  animation: none; /* Pause the pulse on hover for a direct response */
+  transform: scale(1.1) translateY(-2px);
+  background: linear-gradient(135deg, #229ED9, #0088cc);
+  box-shadow: 
+    0 6px 25px rgba(0, 136, 204, 0.6),
+    0 12px 50px rgba(0, 136, 204, 0.3);
+  animation: float 3s ease-in-out infinite; /* Keep floating animation */
 }
 
 #loadMoreBatchesBtn:active {
-  transform: scale(0.98); /* Press-down effect */
+  transform: scale(0.95) translateY(-1px); /* Press-down effect */
   filter: brightness(0.9);
 }
 
@@ -1179,10 +1163,12 @@ input[type="text"]::placeholder {
 #loadMoreBatchesBtn i {
   font-size: 1rem;
   transition: transform 0.3s ease-in-out;
+  animation: pulse 2s ease-in-out infinite;
 }
 
 #loadMoreBatchesBtn:hover i {
   transform: translateY(3px); /* Icon dips down on hover */
+  animation: pulse 2s ease-in-out infinite; /* Keep pulsing on hover */
 }
 
 
