@@ -329,6 +329,11 @@
       return favoriteBatches.includes(batchId);
     }
 
+    function getFavoriteBatches() {
+      const stored = localStorage.getItem("favoriteBatches");
+      return stored ? JSON.parse(stored) : [];
+    }
+
     function toggleBookmark(batchId, bookmarkIcon) {
       const index = favoriteBatches.indexOf(batchId);
       if (index === -1) {
@@ -546,6 +551,29 @@
       main.style.display = "grid";
       
       try {
+        let favBatches = [];
+        const favorites = getFavoriteBatches();
+        
+        // On the very first load (when reset is true) and if not searching,
+        // fetch all favorited batches first.
+        if (reset && favorites.length > 0 && !currentQuery) {
+          try {
+            const favRes = await fetch(`${API_BASE}/api/batches/by-ids?ids=${favorites.join(',')}`);
+            const favData = await favRes.json();
+            if (favData.success && favData.batches) {
+              // Map the favorite batches to our standard card format
+              favBatches = favData.batches.map(b => ({
+                name: b.name,
+                image: b.previewImage || 'https://placehold.co/600x340/1a1a1a/ffffff?text=No+Image',
+                batchId: b._id
+              }));
+            }
+          } catch (favErr) {
+            console.error("Failed to load favorite batches:", favErr);
+            // Continue execution even if favorites fail to load
+          }
+        }
+        
         // Use limit of 12 batches per page (like in TEST.HTML)
         let query = currentQuery ? `&q=${encodeURIComponent(currentQuery)}` : '';
         const apiUrl = `${API_BASE}/api/batches?page=${currentPage}&limit=12${query}`;
@@ -566,8 +594,8 @@
           }));
         }
         
-        // Combine with existing batches and remove duplicates
-        const combinedBatches = [...allBatches, ...newBatches];
+        // Combine and de-duplicate batches
+        const combinedBatches = [...favBatches, ...allBatches, ...newBatches];
         const uniqueBatchesMap = new Map(combinedBatches.map(batch => [batch.batchId, batch]));
         allBatches = Array.from(uniqueBatchesMap.values());
         
@@ -609,7 +637,16 @@
         loadMoreBtnWrapper.style.display = hasMore ? "block" : "none";
       }
 
-      batches.forEach(batch => {
+      // Sort batches: favorited ones come first
+      const favorites = getFavoriteBatches();
+      const sorted = [...batches].sort((a, b) => {
+        const aFav = favorites.includes(a.batchId);
+        const bFav = favorites.includes(b.batchId);
+        if (aFav === bFav) return 0;
+        return aFav ? -1 : 1;
+      });
+
+      sorted.forEach(batch => {
         appendCard(main, batch.name, batch.image, batch.batchId, () => {
           currentBatchName = batch.name;
           loadSubjects(batch.batchId);
