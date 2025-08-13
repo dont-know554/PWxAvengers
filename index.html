@@ -586,7 +586,7 @@
     
     // Use limit of 12 batches per page (like in TEST.HTML)
     const query = currentQuery ? `&q=${encodeURIComponent(currentQuery)}` : "";
-    const res = await fetch(`${API_BASE}/api/batches?page=${currentPage}&limit=12${query}`);
+    const res = await fetch(`${API_BASE}/api/batches?page=${currentPage}&limit=15${query}`);
     const data = await res.json();
     
     let newBatches = [];
