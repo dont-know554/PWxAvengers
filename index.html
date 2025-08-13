@@ -322,55 +322,48 @@
     let hasMore = true;
     let currentQuery = "";
 
-    // Bookmark functionality
-    let favoriteBatches = JSON.parse(localStorage.getItem('favoriteBatches') || '[]');
-
-    function isBatchBookmarked(batchId) {
-      return favoriteBatches.includes(batchId);
+    // Favorite batch functionality (matching test.html)
+    function getFavoriteBatches() {
+      const stored = localStorage.getItem("favoriteBatches");
+      return stored ? JSON.parse(stored) : [];
     }
 
-    function toggleBookmark(batchId, bookmarkIcon) {
-      const index = favoriteBatches.indexOf(batchId);
-      if (index === -1) {
-        // Not bookmarked, add to favorites
-        favoriteBatches.push(batchId);
-        bookmarkIcon.classList.add('bookmarked');
+    function isFavoriteBatch(batchId) {
+      return getFavoriteBatches().includes(batchId);
+    }
+
+    function toggleFavoriteBatch(batchId) {
+      const favs = getFavoriteBatches();
+      const index = favs.indexOf(batchId);
+      if (index > -1) {
+        favs.splice(index, 1);
       } else {
-        // Already bookmarked, remove from favorites
-        favoriteBatches.splice(index, 1);
-        bookmarkIcon.classList.remove('bookmarked');
+        favs.push(batchId);
       }
-
-      // Save to localStorage
-      localStorage.setItem('favoriteBatches', JSON.stringify(favoriteBatches));
-
-      // Re-sort the batches list
-      if (allBatches.length > 0) {
-        sortAndRenderBatches();
-      }
+      localStorage.setItem("favoriteBatches", JSON.stringify(favs));
     }
 
     function sortAndRenderBatches() {
-      // Separate bookmarked and non-bookmarked batches
-      const bookmarkedBatches = [];
-      const nonBookmarkedBatches = [];
+      // Separate favorite and non-favorite batches
+      const favoriteBatches = [];
+      const nonFavoriteBatches = [];
       
       allBatches.forEach(batch => {
-        if (isBatchBookmarked(batch.batchId)) {
-          bookmarkedBatches.push(batch);
+        if (isFavoriteBatch(batch.batchId)) {
+          favoriteBatches.push(batch);
         } else {
-          nonBookmarkedBatches.push(batch);
+          nonFavoriteBatches.push(batch);
         }
       });
       
-      // Shuffle non-bookmarked batches randomly
-      for (let i = nonBookmarkedBatches.length - 1; i > 0; i--) {
+      // Shuffle non-favorite batches randomly
+      for (let i = nonFavoriteBatches.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        [nonBookmarkedBatches[i], nonBookmarkedBatches[j]] = [nonBookmarkedBatches[j], nonBookmarkedBatches[i]];
+        [nonFavoriteBatches[i], nonFavoriteBatches[j]] = [nonFavoriteBatches[j], nonFavoriteBatches[i]];
       }
       
-      // Combine bookmarked batches (unchanged order) with shuffled non-bookmarked batches
-      const sortedBatches = [...bookmarkedBatches, ...nonBookmarkedBatches];
+      // Combine favorite batches (unchanged order) with shuffled non-favorite batches
+      const sortedBatches = [...favoriteBatches, ...nonFavoriteBatches];
 
       renderBatches(sortedBatches);
     }
@@ -493,13 +486,13 @@
       const div = document.createElement("div");
       div.className = "card";
 
-      // Check if this batch is bookmarked
-      const isBookmarked = isBatchBookmarked(batchId);
+      // Check if this batch is favorited
+      const isFav = isFavoriteBatch(batchId);
 
       div.innerHTML = `
         ${image ? `<img src="${image}" alt="${title}" />` : ""}
-        <div class="bookmark-icon ${isBookmarked ? 'bookmarked' : ''}" data-batch-id="${batchId}">
-          <i class="fas fa-bookmark"></i>
+        <div class="heart-icon ${isFav ? 'active' : ''}" data-batch-id="${batchId}">
+          ♥
         </div>
         <div class="card-title">${title}</div>
         <button class="explore-button" onclick="event.stopPropagation();">EXPLORE</button>
@@ -512,11 +505,13 @@
         onClick();
       };
 
-      // Add click handler for bookmark icon
-      const bookmarkIcon = div.querySelector('.bookmark-icon');
-      bookmarkIcon.onclick = (event) => {
+      // Add click handler for heart icon
+      const heartIcon = div.querySelector('.heart-icon');
+      heartIcon.onclick = (event) => {
         event.stopPropagation();
-        toggleBookmark(batchId, bookmarkIcon);
+        toggleFavoriteBatch(batchId);
+        // Re-render the entire list to show the favorited item at the top
+        sortAndRenderBatches();
       };
 
       container.appendChild(div);
@@ -529,106 +524,99 @@
       if (isLoading || (!hasMore && !reset)) return;
       isLoading = true;
       showLoader(true);
-      
-      // Get reference to the load more button and wrapper
-      const loadMoreBtn = document.getElementById("loadMoreBatchesBtn");
-      const loadMoreBtnWrapper = document.getElementById("loadMoreBatchesWrapper");
-      
-      if (loadMoreBtn) loadMoreBtn.disabled = true;
-      
-      if (reset) {
-        currentPage = 1;
-        allBatches = [];
-        main.innerHTML = "";
-        hasMore = true;
-      }
-      
-      main.style.display = "grid";
-      
+  
+  // Get reference to the load more button and wrapper
+  const loadMoreBtn = document.getElementById("loadMoreBatchesBtn");
+  const loadMoreBtnWrapper = document.getElementById("loadMoreBatchesWrapper");
+  
+  if (loadMoreBtn) loadMoreBtn.disabled = true;
+  
+  if (reset) {
+    currentPage = 1;
+    allBatches = [];
+    main.innerHTML = "";
+    hasMore = true;
+  }
+  
+  main.style.display = "grid";
+  
+  try {
+    let favBatches = [];
+    const favorites = getFavoriteBatches();
+    
+    // --- PRIORITY LOADING: Start ---
+    // On the very first load (when reset is true) and if not searching,
+    // fetch all favorited batches first.
+    if (reset && favorites.length > 0 && !currentQuery) {
       try {
-        let favBatches = [];
-        const favorites = favoriteBatches; // Use existing favoriteBatches array
-        
-        // --- NEW LOGIC: Fetch favorite batches first on reset (like TEST.HTML) ---
-        // On the very first load (when reset is true) and if not searching,
-        // fetch all favorited batches first.
-        if (reset && favorites.length > 0 && !currentQuery) {
-          try {
-            const favRes = await fetch(`${API_BASE}/api/batches/by-ids?ids=${favorites.join(',')}`);
-            const favData = await favRes.json();
-            if (favData.success && favData.batches) {
-              // Map the favorite batches to our standard card format
-              favBatches = favData.batches.map(b => ({
-                batchId: b._id,
-                name: b.name,
-                byName: b.byName,
-                image: b.previewImage || 'https://placehold.co/600x340/1a1a1a/ffffff?text=No+Image',
-                language: b.language,
-                exam: b.exam,
-                startDate: b.start_date,
-                // Add other properties as needed
-              }));
-            }
-          } catch (favErr) {
-            console.error('Failed to load favorite batches:', favErr);
-            // Continue with normal loading if favorites fail
-          }
+        const favRes = await fetch(`${API_BASE}/api/batches/by-ids?ids=${favorites.join(',')}`);
+        const favData = await favRes.json();
+        if (favData.success && favData.batches) {
+          // Map the favorite batches to our standard card format
+          favBatches = favData.batches.map(b => ({
+            batchId: b._id,
+            name: b.name,
+            byName: b.byName,
+            image: b.previewImage || 'https://placehold.co/600x340/1a1a1a/ffffff?text=No+Image',
+            language: b.language,
+            exam: b.exam,
+            startDate: b.start_date,
+          }));
         }
-        
-        // Use limit of 12 batches per page (like in TEST.HTML)
-        const limit = 12;
-        const url = currentQuery 
-          ? `${API_BASE}/api/batches/search?query=${encodeURIComponent(currentQuery)}&page=${currentPage}&limit=${limit}`
-          : `${API_BASE}/api/batches?page=${currentPage}&limit=${limit}`;
-        
-        const res = await fetch(url);
-        const data = await res.json();
-        
-        if (!data.success) {
-          throw new Error(data.message || "Failed to load batches");
-        }
-        
-        const newBatches = data.batches || [];
-        
-        // If we have favorite batches and this is the first load, prepend them
-        if (reset && favBatches.length > 0) {
-          // Remove any duplicates from newBatches that are already in favBatches
-          const favIds = favBatches.map(b => b.batchId);
-          const filteredNewBatches = newBatches.filter(b => !favIds.includes(b.batchId));
-          
-          // Combine favorite batches first, then regular batches
-          allBatches = [...favBatches, ...filteredNewBatches];
-        } else {
-          // Add new batches to allBatches array
-          allBatches.push(...newBatches);
-        }
-        
-        // Render batches with append option for pagination
-        const shouldAppend = currentPage > 1;
-        const batchesToRender = reset && favBatches.length > 0 ? allBatches : newBatches;
-        renderBatches(batchesToRender, { append: shouldAppend });
-        
-        // Update pagination state
-        if (newBatches.length === 0 || (data.totalPages && currentPage >= data.totalPages)) {
-          hasMore = false;
-          if (loadMoreBtnWrapper) loadMoreBtnWrapper.style.display = "none";
-        } else {
-          currentPage++;
-          if (loadMoreBtnWrapper) loadMoreBtnWrapper.style.display = "block";
-        }
-        
-        if (allBatches.length === 0) {
-          renderNoResults();
-        }
-        
-      } catch (err) {
-        console.error(" Failed to load batches:", err);
-      } finally {
-        isLoading = false;
-        showLoader(false);
-        if (loadMoreBtn) loadMoreBtn.disabled = false;
+      } catch (favErr) {
+        console.error("Failed to load favorite batches:", favErr);
+        // Continue execution even if favorites fail to load
       }
     }
+    // --- PRIORITY LOADING: End ---
+    
+    // Use limit of 12 batches per page (like in TEST.HTML)
+    const query = currentQuery ? `&q=${encodeURIComponent(currentQuery)}` : "";
+    const res = await fetch(`${API_BASE}/api/batches?page=${currentPage}&limit=12${query}`);
+    const data = await res.json();
+    
+    let newBatches = [];
+    if (data.success && data.batches && data.batches.length > 0) {
+      newBatches = data.batches.map(b => ({
+        batchId: b._id,
+        name: b.name,
+        byName: b.byName,
+        image: b.previewImage || 'https://placehold.co/600x340/1a1a1a/ffffff?text=No+Image',
+        language: b.language,
+        exam: b.exam,
+        startDate: b.start_date,
+      }));
+    }
+    
+    // Combine and de-duplicate batches
+    const combinedBatches = [...favBatches, ...allBatches, ...newBatches];
+    const uniqueBatchesMap = new Map(combinedBatches.map(batch => [batch.batchId, batch]));
+    allBatches = Array.from(uniqueBatchesMap.values());
+    
+    // Sort and render batches (favorites first)
+    sortAndRenderBatches();
+    
+    // Update pagination state
+    if (newBatches.length === 0 || (data.totalPages && currentPage >= data.totalPages)) {
+      hasMore = false;
+      if (loadMoreBtnWrapper) loadMoreBtnWrapper.style.display = "none";
+    } else {
+      currentPage++;
+      if (loadMoreBtnWrapper) loadMoreBtnWrapper.style.display = "block";
+    }
+    
+    if (allBatches.length === 0) {
+      renderNoResults();
+    }
+    
+  } catch (err) {
+    console.error(" Failed to load batches:", err);
+  } finally {
+    isLoading = false;
+    showLoader(false);
+    if (loadMoreBtn) loadMoreBtn.disabled = false;
+  }
+}
 
     function renderBatches(batches, { append = false } = {}) {
       if (!append) main.innerHTML = "";
@@ -643,16 +631,7 @@
         loadMoreBtnWrapper.style.display = hasMore ? "block" : "none";
       }
 
-      // Sort batches: favorited ones come first (like TEST.HTML)
-      const favorites = favoriteBatches;
-      const sorted = [...batches].sort((a, b) => {
-        const aFav = favorites.includes(a.batchId);
-        const bFav = favorites.includes(b.batchId);
-        if (aFav === bFav) return 0;
-        return aFav ? -1 : 1; // Favorites first
-      });
-
-      sorted.forEach(batch => {
+      batches.forEach(batch => {
         appendCard(main, batch.name, batch.image, batch.batchId, () => {
           currentBatchName = batch.name;
           loadSubjects(batch.batchId);
