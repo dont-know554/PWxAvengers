@@ -363,13 +363,16 @@
       console.log('🔥 Favorite batches found:', favoriteBatches.map(b => ({ id: b.batchId, name: b.name })));
       console.log('🔥 Non-favorite batches:', nonFavoriteBatches.map(b => ({ id: b.batchId, name: b.name })));
       
-      // Shuffle non-favorite batches randomly
-      for (let i = nonFavoriteBatches.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [nonFavoriteBatches[i], nonFavoriteBatches[j]] = [nonFavoriteBatches[j], nonFavoriteBatches[i]];
-      }
+      // Sort non-favorite batches by date (newest first)
+      nonFavoriteBatches.sort((a, b) => {
+        const dateA = new Date(a.startDate || 0);
+        const dateB = new Date(b.startDate || 0);
+        return dateB - dateA; // Newest first (descending order)
+      });
       
-      // Combine favorite batches (unchanged order) with shuffled non-favorite batches
+      console.log('🔥 Non-favorite batches sorted by date:', nonFavoriteBatches.map(b => ({ id: b.batchId, name: b.name, date: b.startDate })));
+      
+      // Combine favorite batches (unchanged order) with date-sorted non-favorite batches
       const sortedBatches = [...favoriteBatches, ...nonFavoriteBatches];
       console.log('🔥 Final sorted batches:', sortedBatches.map(b => ({ id: b.batchId, name: b.name })));
 
@@ -1207,11 +1210,11 @@
                 } catch (error) {
                   // This block executes only if ALL promises fail
                   console.error("All video sources failed to load:", error);
-                  alert("⚠️ Video not available from any source.");
+                  alert("⚠️ Server Issue....");
                 }
               } catch (err) {
                 console.error("Video load failed:", err);
-                alert("⚠️ Failed to load video.");
+                alert("⚠️ Video failed to load...");
               } finally {
                 showLoader(false);
               }
