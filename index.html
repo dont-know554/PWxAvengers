@@ -347,6 +347,10 @@
       // Separate favorite and non-favorite batches
       const favoriteBatches = [];
       const nonFavoriteBatches = [];
+      const favorites = getFavoriteBatches();
+      
+      console.log('🔥 Sorting batches. Current favorites:', favorites);
+      console.log('🔥 All batches before sorting:', allBatches.map(b => ({ id: b.batchId, name: b.name })));
       
       allBatches.forEach(batch => {
         if (isFavoriteBatch(batch.batchId)) {
@@ -356,6 +360,9 @@
         }
       });
       
+      console.log('🔥 Favorite batches found:', favoriteBatches.map(b => ({ id: b.batchId, name: b.name })));
+      console.log('🔥 Non-favorite batches:', nonFavoriteBatches.map(b => ({ id: b.batchId, name: b.name })));
+      
       // Shuffle non-favorite batches randomly
       for (let i = nonFavoriteBatches.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -364,6 +371,7 @@
       
       // Combine favorite batches (unchanged order) with shuffled non-favorite batches
       const sortedBatches = [...favoriteBatches, ...nonFavoriteBatches];
+      console.log('🔥 Final sorted batches:', sortedBatches.map(b => ({ id: b.batchId, name: b.name })));
 
       renderBatches(sortedBatches);
     }
@@ -486,13 +494,13 @@
       const div = document.createElement("div");
       div.className = "card";
 
-      // Check if this batch is favorited
-      const isFav = isFavoriteBatch(batchId);
+      // Check if this batch is bookmarked (keeping original terminology)
+      const isBookmarked = isFavoriteBatch(batchId);
 
       div.innerHTML = `
         ${image ? `<img src="${image}" alt="${title}" />` : ""}
-        <div class="heart-icon ${isFav ? 'active' : ''}" data-batch-id="${batchId}">
-          ♥
+        <div class="bookmark-icon ${isBookmarked ? 'bookmarked' : ''}" data-batch-id="${batchId}">
+          <i class="fas fa-bookmark"></i>
         </div>
         <div class="card-title">${title}</div>
         <button class="explore-button" onclick="event.stopPropagation();">EXPLORE</button>
@@ -505,9 +513,9 @@
         onClick();
       };
 
-      // Add click handler for heart icon
-      const heartIcon = div.querySelector('.heart-icon');
-      heartIcon.onclick = (event) => {
+      // Add click handler for bookmark icon
+      const bookmarkIcon = div.querySelector('.bookmark-icon');
+      bookmarkIcon.onclick = (event) => {
         event.stopPropagation();
         toggleFavoriteBatch(batchId);
         // Re-render the entire list to show the favorited item at the top
@@ -549,8 +557,10 @@
     // fetch all favorited batches first.
     if (reset && favorites.length > 0 && !currentQuery) {
       try {
+        console.log('🔥 Fetching favorite batches:', favorites);
         const favRes = await fetch(`${API_BASE}/api/batches/by-ids?ids=${favorites.join(',')}`);
         const favData = await favRes.json();
+        console.log('🔥 Favorite batches response:', favData);
         if (favData.success && favData.batches) {
           // Map the favorite batches to our standard card format
           favBatches = favData.batches.map(b => ({
@@ -562,6 +572,7 @@
             exam: b.exam,
             startDate: b.start_date,
           }));
+          console.log('🔥 Mapped favorite batches:', favBatches);
         }
       } catch (favErr) {
         console.error("Failed to load favorite batches:", favErr);
