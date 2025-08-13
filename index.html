@@ -329,11 +329,6 @@
       return favoriteBatches.includes(batchId);
     }
 
-    function getFavoriteBatches() {
-      const stored = localStorage.getItem("favoriteBatches");
-      return stored ? JSON.parse(stored) : [];
-    }
-
     function toggleBookmark(batchId, bookmarkIcon) {
       const index = favoriteBatches.indexOf(batchId);
       if (index === -1) {
@@ -552,8 +547,9 @@
       
       try {
         let favBatches = [];
-        const favorites = getFavoriteBatches();
+        const favorites = favoriteBatches; // Use existing favoriteBatches array
         
+        // --- NEW LOGIC: Fetch favorite batches first on reset (like TEST.HTML) ---
         // On the very first load (when reset is true) and if not searching,
         // fetch all favorited batches first.
         if (reset && favorites.length > 0 && !currentQuery) {
@@ -563,44 +559,54 @@
             if (favData.success && favData.batches) {
               // Map the favorite batches to our standard card format
               favBatches = favData.batches.map(b => ({
+                batchId: b._id,
                 name: b.name,
+                byName: b.byName,
                 image: b.previewImage || 'https://placehold.co/600x340/1a1a1a/ffffff?text=No+Image',
-                batchId: b._id
+                language: b.language,
+                exam: b.exam,
+                startDate: b.start_date,
+                // Add other properties as needed
               }));
             }
           } catch (favErr) {
-            console.error("Failed to load favorite batches:", favErr);
-            // Continue execution even if favorites fail to load
+            console.error('Failed to load favorite batches:', favErr);
+            // Continue with normal loading if favorites fail
           }
         }
         
         // Use limit of 12 batches per page (like in TEST.HTML)
-        let query = currentQuery ? `&q=${encodeURIComponent(currentQuery)}` : '';
-        const apiUrl = `${API_BASE}/api/batches?page=${currentPage}&limit=12${query}`;
+        const limit = 12;
+        const url = currentQuery 
+          ? `${API_BASE}/api/batches/search?query=${encodeURIComponent(currentQuery)}&page=${currentPage}&limit=${limit}`
+          : `${API_BASE}/api/batches?page=${currentPage}&limit=${limit}`;
         
-        console.log(' Fetching batches from:', apiUrl);
-        
-        const res = await fetch(apiUrl);
+        const res = await fetch(url);
         const data = await res.json();
         
-        console.log(' Response:', data);
-        
-        let newBatches = [];
-        if (data.success && data.batches && data.batches.length > 0) {
-          newBatches = data.batches.map(b => ({
-            name: b.name,
-            image: b.previewImage || 'https://placehold.co/600x340/1a1a1a/ffffff?text=No+Image',
-            batchId: b._id
-          }));
+        if (!data.success) {
+          throw new Error(data.message || "Failed to load batches");
         }
         
-        // Combine and de-duplicate batches
-        const combinedBatches = [...favBatches, ...allBatches, ...newBatches];
-        const uniqueBatchesMap = new Map(combinedBatches.map(batch => [batch.batchId, batch]));
-        allBatches = Array.from(uniqueBatchesMap.values());
+        const newBatches = data.batches || [];
         
-        // Render batches
-        renderBatches(allBatches);
+        // If we have favorite batches and this is the first load, prepend them
+        if (reset && favBatches.length > 0) {
+          // Remove any duplicates from newBatches that are already in favBatches
+          const favIds = favBatches.map(b => b.batchId);
+          const filteredNewBatches = newBatches.filter(b => !favIds.includes(b.batchId));
+          
+          // Combine favorite batches first, then regular batches
+          allBatches = [...favBatches, ...filteredNewBatches];
+        } else {
+          // Add new batches to allBatches array
+          allBatches.push(...newBatches);
+        }
+        
+        // Render batches with append option for pagination
+        const shouldAppend = currentPage > 1;
+        const batchesToRender = reset && favBatches.length > 0 ? allBatches : newBatches;
+        renderBatches(batchesToRender, { append: shouldAppend });
         
         // Update pagination state
         if (newBatches.length === 0 || (data.totalPages && currentPage >= data.totalPages)) {
@@ -637,13 +643,13 @@
         loadMoreBtnWrapper.style.display = hasMore ? "block" : "none";
       }
 
-      // Sort batches: favorited ones come first
-      const favorites = getFavoriteBatches();
+      // Sort batches: favorited ones come first (like TEST.HTML)
+      const favorites = favoriteBatches;
       const sorted = [...batches].sort((a, b) => {
         const aFav = favorites.includes(a.batchId);
         const bFav = favorites.includes(b.batchId);
         if (aFav === bFav) return 0;
-        return aFav ? -1 : 1;
+        return aFav ? -1 : 1; // Favorites first
       });
 
       sorted.forEach(batch => {
