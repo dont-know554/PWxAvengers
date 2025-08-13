@@ -46,6 +46,12 @@
     <input type="text" id="searchInput" placeholder="🔍 Enter Batch name" />
 
     <div class="grid" id="main"></div>
+    <div id="loadMoreBatchesWrapper" style="text-align: center; margin: 2rem 0; display: none;">
+      <button id="loadMoreBatchesBtn">
+        <span>Load More Arenas</span>
+        <i class="fas fa-chevron-down"></i>
+      </button>
+    </div>
     <div class="back-btn" id="backBtn" style="display:none;">← Back</div>
 
     <div class="today-classes-wrapper" id="todayWrapper" style="display: none;">
@@ -516,78 +522,79 @@
       container.appendChild(div);
     }
 
-    // 🎯 BATCH FILTERING NOW HANDLED SERVER-SIDE
+    // BATCH FILTERING NOW HANDLED SERVER-SIDE
     // No need for client-side filtering - server returns only allowed batches
 
     async function loadBatches({ reset = false } = {}) {
       if (isLoading || (!hasMore && !reset)) return;
-
       isLoading = true;
-
+      showLoader(true);
+      
+      // Get reference to the load more button and wrapper
+      const loadMoreBtn = document.getElementById("loadMoreBatchesBtn");
+      const loadMoreBtnWrapper = document.getElementById("loadMoreBatchesWrapper");
+      
+      if (loadMoreBtn) loadMoreBtn.disabled = true;
+      
       if (reset) {
         currentPage = 1;
         allBatches = [];
         main.innerHTML = "";
         hasMore = true;
       }
-
-      // Show main grid first, then loading overlay
+      
       main.style.display = "grid";
-      showLoader(true);
-
+      
       try {
-        // 🚀 SIMPLIFIED: Server handles all filtering now
+        // Use limit of 12 batches per page (like in TEST.HTML)
         let query = currentQuery ? `&q=${encodeURIComponent(currentQuery)}` : '';
-        const apiUrl = `${API_BASE}/api/batches?page=${currentPage}&limit=1500${query}`;
+        const apiUrl = `${API_BASE}/api/batches?page=${currentPage}&limit=12${query}`;
         
-        console.log('📡 Fetching server-filtered batches from:', apiUrl);
-
+        console.log(' Fetching batches from:', apiUrl);
+        
         const res = await fetch(apiUrl);
         const data = await res.json();
-
-        console.log('📦 Server Response:', data);
-        console.log('📊 Server-filtered batches received:', data.batches?.length || 0);
-        console.log('🎯 Server filtering active:', data.serverFiltered || false);
-
-        // Server already filtered the batches - use them directly
-        const serverFilteredBatches = data.batches || [];
         
-        console.log('✅ Server-side filtering complete:', serverFilteredBatches.length, 'batches');
-
-        const newBatches = serverFilteredBatches.map(b => ({
-          name: b.name,
-          image: b.previewImage,
-          batchId: b._id
-        }));
-
-        if (serverFilteredBatches.length === 0) {
-          renderNoResults();
-          hasMore = false;
-          setTimeout(() => {
-            showLoader(false);
-          }, 800);
-        } else {
-          allBatches = reset ? newBatches : allBatches.concat(newBatches);
-          // Show batches immediately
-          sortAndRenderBatches();
-          showLoader(false);
-
-          // Update pagination based on server response
-          hasMore = data.hasMore || false;
-          if (data.hasMore) {
-            currentPage++;
-          }
+        console.log(' Response:', data);
+        
+        let newBatches = [];
+        if (data.success && data.batches && data.batches.length > 0) {
+          newBatches = data.batches.map(b => ({
+            name: b.name,
+            image: b.previewImage || 'https://placehold.co/600x340/1a1a1a/ffffff?text=No+Image',
+            batchId: b._id
+          }));
         }
+        
+        // Combine with existing batches and remove duplicates
+        const combinedBatches = [...allBatches, ...newBatches];
+        const uniqueBatchesMap = new Map(combinedBatches.map(batch => [batch.batchId, batch]));
+        allBatches = Array.from(uniqueBatchesMap.values());
+        
+        // Render batches
+        renderBatches(allBatches);
+        
+        // Update pagination state
+        if (newBatches.length === 0 || (data.totalPages && currentPage >= data.totalPages)) {
+          hasMore = false;
+          if (loadMoreBtnWrapper) loadMoreBtnWrapper.style.display = "none";
+        } else {
+          currentPage++;
+          if (loadMoreBtnWrapper) loadMoreBtnWrapper.style.display = "block";
+        }
+        
+        if (allBatches.length === 0) {
+          renderNoResults();
+        }
+        
       } catch (err) {
-        console.error("❌ Failed to load batches:", err);
-        showLoader(false);
+        console.error(" Failed to load batches:", err);
       } finally {
         isLoading = false;
+        showLoader(false);
+        if (loadMoreBtn) loadMoreBtn.disabled = false;
       }
     }
-
-
-
 
     function renderBatches(batches, { append = false } = {}) {
       if (!append) main.innerHTML = "";
@@ -595,7 +602,12 @@
       todayWrapper.style.display = "none";
       backBtn.style.display = "none";
       searchInput.style.display = "block";
-      // loadMoreBtnWrapper.style.display = "block"; // Removed as we no longer have this button
+  
+      // Show/hide load more button based on hasMore state
+      const loadMoreBtnWrapper = document.getElementById("loadMoreBatchesWrapper");
+      if (loadMoreBtnWrapper) {
+        loadMoreBtnWrapper.style.display = hasMore ? "block" : "none";
+      }
 
       batches.forEach(batch => {
         appendCard(main, batch.name, batch.image, batch.batchId, () => {
@@ -608,6 +620,7 @@
     function renderNoResults() {
       main.innerHTML = `
     <div style="text-align:center; color:#666; padding:2rem;">
+      <p> No batches found.</p>
       <p>🔍 No batches found.</p>
     </div>
   `;
@@ -637,6 +650,14 @@
       currentQuery = searchInput.value.trim();
       loadBatches({ reset: true });
     }, 300));
+    
+    // 🎯 Load More Arenas button listener
+    const loadMoreBtn = document.getElementById("loadMoreBatchesBtn");
+    if (loadMoreBtn) {
+      loadMoreBtn.addEventListener("click", () => {
+        loadBatches();
+      });
+    }
 
     // Utility: debounce
     function debounce(fn, delay) {

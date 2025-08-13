@@ -1092,6 +1092,123 @@ input[type="text"]::placeholder {
     border-color: var(--squid-pink);
 }
 
+/* === Load More Button (Squid Game Theme) === */
+
+:root {
+    --squid-pink: #ff006e;
+    --squid-dark-blue: #001a2f;
+    --squid-red: #c40000;
+    --squid-cyan: #00e5ff;
+    --squid-green: #00ff88;
+    --squid-dark-pink: #9c0042;
+    --glow-pink: rgba(255, 0, 110, 0.6);
+    --glow-dark-pink: rgba(156, 0, 66, 0.4);
+}
+
+#loadMoreBatchesBtn {
+  /* Basic Setup & Font */
+  background: linear-gradient(45deg, var(--squid-pink), var(--squid-dark-blue));
+  border: 2px solid var(--squid-pink);
+  color: var(--text-primary);
+  font-family: 'Orbitron', monospace;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  
+  /* Sizing and Shape */
+  padding: 1rem 2.5rem;
+  border-radius: 50px; /* Pill shape */
+  
+  /* Flexbox for Icon Alignment */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+
+  /* Effects */
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  box-shadow: 
+    0 0 20px var(--glow-dark-pink),
+    0 0 30px var(--glow-pink);
+  
+  /* Prevent text selection */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* --- Glow Animation --- */
+
+@keyframes pulse-glow {
+  0% {
+    box-shadow: 0 0 20px var(--glow-dark-pink);
+  }
+  50% {
+    box-shadow: 0 0 35px var(--glow-pink);
+  }
+  100% {
+    box-shadow: 0 0 20px var(--glow-dark-pink);
+  }
+}
+
+#loadMoreBatchesBtn {
+    animation: pulse-glow 2.5s infinite ease-in-out;
+}
+
+
+/* --- Hover and Active States --- */
+
+#loadMoreBatchesBtn:hover {
+  transform: scale(1.05);
+  border-color: var(--squid-cyan);
+  box-shadow: 0 0 40px var(--glow-cyan);
+  animation: none; /* Pause the pulse on hover for a direct response */
+}
+
+#loadMoreBatchesBtn:active {
+  transform: scale(0.98); /* Press-down effect */
+  filter: brightness(0.9);
+}
+
+
+/* --- Icon Styling --- */
+
+#loadMoreBatchesBtn i {
+  font-size: 1rem;
+  transition: transform 0.3s ease-in-out;
+}
+
+#loadMoreBatchesBtn:hover i {
+  transform: translateY(3px); /* Icon dips down on hover */
+}
+
+
+/* --- Cool sliding gloss effect on hover --- */
+
+#loadMoreBatchesBtn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 75%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.25),
+    transparent
+  );
+  transform: skewX(-25deg);
+  transition: left 0.6s ease;
+}
+
+#loadMoreBatchesBtn:hover::before {
+  left: 120%;
+}
+
 .note-buttons {
     display: flex;
     flex-wrap: wrap;
