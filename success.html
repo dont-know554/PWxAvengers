@@ -6,8 +6,7 @@
     <title>Key Generated</title>
     <link rel="icon" type="image/png" sizes="any"
         href="https://www.pw.live/favicon.ico">
-        <!-- <script disable-devtool-auto="true" src="https://cdn.jsdelivr.net/npm/disable-devtool" disable-select="true"
-        disable-copy="true" disable-cut="true" disable-paste="false"></script> -->
+
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -521,7 +520,7 @@
             </div>
         </div>
     </div>
-    <!-- <script>
+    <script>
         // CONSOLE
         const originalConsole = {
 log: console.log,
@@ -589,7 +588,7 @@ console.clear = function() {};
         // Start periodic checks after initial delay
         setInterval(checkDevTools, checkInterval);
     }, 1000);
-        </script> -->
+        </script>
     <script>
     // Secure Cookie System with HMAC Signing
     // This prevents users from extending cookie expiry through DevTools
@@ -701,16 +700,17 @@ console.clear = function() {};
         const referrer = document.referrer;
         
         const isValidReferrer = referrer && (
-            referrer.includes('gplinks.co') ||      // Server 1
-            referrer.includes('adrinolinks.in')  // Server 2 (Adrino)
+            referrer.includes('gplinks.co') || 
+            referrer.includes('ngrok-free.app') ||
+            referrer.includes('procinehub.com/')
         );
         
         // Check for token parameter
         const token = urlParams.get('token');
         const isValidToken = token === 'auth-success';
         
-        // Security: Valid referrer AND valid token required
-        // Removed session-based validation as it's not needed
+        // Security: BOTH valid referrer AND valid token are required
+        // This prevents direct access and ensures proper flow through shortener
         return isValidReferrer && isValidToken;
     }
     

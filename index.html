@@ -15,8 +15,8 @@
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <title>PW x AVENGERS</title>
-  <script disable-devtool-auto="true" src="https://cdn.jsdelivr.net/npm/disable-devtool" disable-select="true"
-    disable-copy="true" disable-cut="true" disable-paste="false"></script>
+  <!-- <script disable-devtool-auto="true" src="https://cdn.jsdelivr.net/npm/disable-devtool" disable-select="true"
+    disable-copy="true" disable-cut="true" disable-paste="false"></script> -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <!-- Cloudflare Web Analytics -->
   <script defer src='https://static.cloudflareinsights.com/beacon.min.js'
@@ -46,12 +46,6 @@
     <input type="text" id="searchInput" placeholder="🔍 Enter Batch name" />
 
     <div class="grid" id="main"></div>
-    <div id="loadMoreBatchesWrapper" style="text-align: center; margin: 2rem 0; display: none;">
-      <button id="loadMoreBatchesBtn">
-        <span>Load More</span>
-        <i class="fas fa-chevron-down"></i>
-      </button>
-    </div>
     <div class="back-btn" id="backBtn" style="display:none;">← Back</div>
 
     <div class="today-classes-wrapper" id="todayWrapper" style="display: none;">
@@ -78,7 +72,7 @@
 
     <div id="lectureSection" style="display:none;">
       <div class="lecture-tabs">
-        <button id="tab-lectures" onclick="switchLectureTab('lectures')">Lectures</button>
+        <button id="tab-lectures" class="active" onclick="switchLectureTab('lectures')">Lectures</button>
         <button id="tab-notes" onclick="switchLectureTab('notes')">Notes</button>
         <button id="tab-dppnotes" onclick="switchLectureTab('dppnotes')">DPPs</button>
         <button id="tab-dpplecture" onclick="switchLectureTab('dpplecture')">DPP Lectures</button>
@@ -192,7 +186,7 @@
       console.log('Token expires:', new Date(payload.exp));
     })();
   </script> -->
-
+<!-- 
   <script>
     // CONSOLE
     const originalConsole = {
@@ -261,7 +255,7 @@
       // Start periodic checks after initial delay
       setInterval(checkDevTools, checkInterval);
     }, 1000);
-  </script>
+  </script> -->
 
   <script>
     // Popup functionality
@@ -295,7 +289,7 @@
   </script>
 
   <script>
-    const API_BASE = "https://pwxavengers-proxy.pw-avengers.workers.dev";
+    const API_BASE = "https://secret-proxy.pw-avengers.workers.dev";
     const loadingOverlay = document.getElementById("loadingOverlay");
     const main = document.getElementById("main");
     const subjectsDiv = document.getElementById("subjects");
@@ -315,32 +309,116 @@
     let lectureTotal = Infinity;
     let lectureLoading = false;
     let currentTopicId = "";
-    let currentContentType = "vidoes";
+    let currentTagId = ""; // Actual tag ID for V3 API calls
+    let currentContentType = "LECTURES";
+    let currentTabType = "lectures"; // Track current tab for filtering
     let currentSubjectId = "";
     let currentPage = 1;
     let isLoading = false;
     let hasMore = true;
     let currentQuery = "";
 
-    // Favorite batch functionality (matching test.html)
+    // Enhanced Favorite Batches functionality - stores both ID and name
     function getFavoriteBatches() {
       const stored = localStorage.getItem("favoriteBatches");
       return stored ? JSON.parse(stored) : [];
     }
 
     function isFavoriteBatch(batchId) {
-      return getFavoriteBatches().includes(batchId);
+      const favorites = getFavoriteBatches();
+      return favorites.some(fav => fav.id === batchId);
     }
 
-    function toggleFavoriteBatch(batchId) {
+    function toggleFavoriteBatch(batchId, bookmarkIcon, batchName = null) {
       const favs = getFavoriteBatches();
-      const index = favs.indexOf(batchId);
+      const index = favs.findIndex(fav => fav.id === batchId);
+      
       if (index > -1) {
+        // Remove from favorites
         favs.splice(index, 1);
+        if (bookmarkIcon) bookmarkIcon.classList.remove('bookmarked');
+        console.log('🗑️ Removed from favorites:', batchName || batchId);
       } else {
-        favs.push(batchId);
+        // Add to favorites - need batch name for API calls
+        if (!batchName) {
+          // Find batch name from current allBatches
+          const batch = allBatches.find(b => b.batchId === batchId);
+          batchName = batch ? batch.name : 'Unknown';
+        }
+        favs.push({ id: batchId, name: batchName });
+        if (bookmarkIcon) bookmarkIcon.classList.add('bookmarked');
+        console.log('⭐ Added to favorites:', batchName);
       }
+      
       localStorage.setItem("favoriteBatches", JSON.stringify(favs));
+      console.log('💾 Updated favorites in localStorage:', favs);
+      
+      // Re-sort the batches list
+      if (allBatches.length > 0) {
+        sortAndRenderBatches();
+      }
+    }
+
+    // Function to fetch favorite batches individually by name
+    async function fetchFavoriteBatches() {
+      const favorites = getFavoriteBatches();
+      if (favorites.length === 0) return [];
+      
+      console.log('🔍 Fetching favorite batches:', favorites.map(f => f.name));
+      const favoriteBatches = [];
+      
+      // Fetch each favorite batch individually
+      for (const favorite of favorites) {
+        try {
+          const apiUrl = `${API_BASE}/batches/search?page=1&name=${encodeURIComponent(favorite.name)}`;
+          console.log('📡 Fetching favorite batch:', favorite.name, 'from:', apiUrl);
+          
+          const res = await fetch(apiUrl);
+          const data = await res.json();
+          
+          if (data.success && data.data) {
+            // Find the exact batch by ID (in case multiple batches have similar names)
+            const exactBatch = data.data.find(b => b._id === favorite.id);
+            if (exactBatch) {
+              favoriteBatches.push({
+                name: exactBatch.name,
+                image: exactBatch.previewImage?.key ? `https://static.pw.live/${exactBatch.previewImage.key}` : null,
+                batchId: exactBatch._id,
+                startDate: exactBatch.startDate,
+                isFavorite: true // Mark as favorite for sorting
+              });
+              console.log('⭐ Found favorite batch:', exactBatch.name);
+            } else {
+              console.log('⚠️ Favorite batch not found by ID, trying first result:', favorite.name);
+              // If exact ID not found, use first result (batch might have been updated)
+              if (data.data.length > 0) {
+                const firstBatch = data.data[0];
+                favoriteBatches.push({
+                  name: firstBatch.name,
+                  image: firstBatch.previewImage?.key ? `https://static.pw.live/${firstBatch.previewImage.key}` : null,
+                  batchId: firstBatch._id,
+                  startDate: firstBatch.startDate,
+                  isFavorite: true
+                });
+              }
+            }
+          }
+        } catch (error) {
+          console.error('❌ Error fetching favorite batch:', favorite.name, error);
+        }
+      }
+      
+      console.log('✅ Fetched favorite batches:', favoriteBatches.length);
+      return favoriteBatches;
+    }
+
+    // Legacy function for backward compatibility
+    function isBatchBookmarked(batchId) {
+      return isFavoriteBatch(batchId);
+    }
+
+    function toggleBookmark(batchId, bookmarkIcon) {
+      return toggleFavoriteBatch(batchId, bookmarkIcon);
     }
 
     function sortAndRenderBatches() {
@@ -497,8 +575,8 @@
       const div = document.createElement("div");
       div.className = "card";
 
-      // Check if this batch is bookmarked (keeping original terminology)
-      const isBookmarked = isFavoriteBatch(batchId);
+      // Check if this batch is bookmarked
+      const isBookmarked = isBatchBookmarked(batchId);
 
       div.innerHTML = `
         ${image ? `<img src="${image}" alt="${title}" />` : ""}
@@ -520,117 +598,120 @@
       const bookmarkIcon = div.querySelector('.bookmark-icon');
       bookmarkIcon.onclick = (event) => {
         event.stopPropagation();
-        toggleFavoriteBatch(batchId);
-        // Re-render the entire list to show the favorited item at the top
-        sortAndRenderBatches();
+        toggleBookmark(batchId, bookmarkIcon);
       };
 
       container.appendChild(div);
     }
 
-    // BATCH FILTERING NOW HANDLED SERVER-SIDE
+    // 🎯 BATCH FILTERING NOW HANDLED SERVER-SIDE
     // No need for client-side filtering - server returns only allowed batches
 
     async function loadBatches({ reset = false } = {}) {
       if (isLoading || (!hasMore && !reset)) return;
+
       isLoading = true;
+
+      if (reset) {
+        currentPage = 1;
+        allBatches = [];
+        main.innerHTML = "";
+        hasMore = true;
+      }
+
+      // Show main grid first, then loading overlay
+      main.style.display = "grid";
       showLoader(true);
-  
-  // Get reference to the load more button and wrapper
-  const loadMoreBtn = document.getElementById("loadMoreBatchesBtn");
-  const loadMoreBtnWrapper = document.getElementById("loadMoreBatchesWrapper");
-  
-  if (loadMoreBtn) loadMoreBtn.disabled = true;
-  
-  if (reset) {
-    currentPage = 1;
-    allBatches = [];
-    main.innerHTML = "";
-    hasMore = true;
-  }
-  
-  main.style.display = "grid";
-  
-  try {
-    let favBatches = [];
-    const favorites = getFavoriteBatches();
-    
-    // --- PRIORITY LOADING: Start ---
-    // On the very first load (when reset is true) and if not searching,
-    // fetch all favorited batches first.
-    if (reset && favorites.length > 0 && !currentQuery) {
+
       try {
-        console.log('🔥 Fetching favorite batches:', favorites);
-        const favRes = await fetch(`${API_BASE}/api/batches/by-ids?ids=${favorites.join(',')}`);
-        const favData = await favRes.json();
-        console.log('🔥 Favorite batches response:', favData);
-        if (favData.success && favData.batches) {
-          // Map the favorite batches to our standard card format
-          favBatches = favData.batches.map(b => ({
-            batchId: b._id,
-            name: b.name,
-            byName: b.byName,
-            image: b.previewImage || 'https://placehold.co/600x340/1a1a1a/ffffff?text=No+Image',
-            language: b.language,
-            exam: b.exam,
-            startDate: b.start_date,
-          }));
-          console.log('🔥 Mapped favorite batches:', favBatches);
+        let serverFilteredBatches = [];
+        
+        // 🎆 ENHANCED: Fetch favorites first on initial load or reset
+        if (reset || currentPage === 1) {
+          console.log('🔍 Fetching favorite batches first...');
+          const favoriteBatches = await fetchFavoriteBatches();
+          serverFilteredBatches = [...favoriteBatches];
+          console.log('⭐ Added', favoriteBatches.length, 'favorite batches to results');
         }
-      } catch (favErr) {
-        console.error("Failed to load favorite batches:", favErr);
-        // Continue execution even if favorites fail to load
+        
+        // 🚀 Fetch regular batches (only if not searching for specific favorites)
+        if (!currentQuery || currentQuery.toLowerCase() === 'batch') {
+          let nameQuery = currentQuery ? `&name=${encodeURIComponent(currentQuery)}` : '';
+          const apiUrl = `${API_BASE}/batches/search?page=${currentPage}${nameQuery}`;
+          
+          console.log('📡 Fetching regular batches from Secret Proxy:', apiUrl);
+
+          const res = await fetch(apiUrl);
+          const data = await res.json();
+
+          console.log('📦 Secret Proxy Response:', data);
+          console.log('📊 Regular batches received:', data.data?.length || 0);
+          console.log('✅ API Success:', data.success);
+
+          // Add regular batches to the list (avoid duplicates with favorites)
+          const regularBatches = data.data || [];
+          const favoriteIds = serverFilteredBatches.map(b => b.batchId);
+          const uniqueRegularBatches = regularBatches.filter(b => !favoriteIds.includes(b._id));
+          
+          const mappedRegularBatches = uniqueRegularBatches.map(b => ({
+            name: b.name,
+            image: b.previewImage?.key ? `https://static.pw.live/${b.previewImage.key}` : null,
+            batchId: b._id,
+            startDate: b.startDate
+          }));
+          
+          serverFilteredBatches = [...serverFilteredBatches, ...mappedRegularBatches];
+          console.log('🔄 Combined total batches:', serverFilteredBatches.length);
+        } else {
+          // Custom search query - search normally
+          const apiUrl = `${API_BASE}/batches/search?page=${currentPage}&name=${encodeURIComponent(currentQuery)}`;
+          console.log('🔍 Custom search for:', currentQuery, 'at:', apiUrl);
+          
+          const res = await fetch(apiUrl);
+          const data = await res.json();
+          
+          const searchResults = data.data || [];
+          serverFilteredBatches = searchResults.map(b => ({
+            name: b.name,
+            image: b.previewImage?.key ? `https://static.pw.live/${b.previewImage.key}` : null,
+            batchId: b._id,
+            startDate: b.startDate
+          }));
+        }
+        
+        console.log('✅ Server-side filtering complete:', serverFilteredBatches.length, 'batches');
+
+        // Batches are already mapped in the new logic above
+        const newBatches = serverFilteredBatches;
+
+        if (serverFilteredBatches.length === 0) {
+          renderNoResults();
+          hasMore = false;
+          setTimeout(() => {
+            showLoader(false);
+          }, 800);
+        } else {
+          allBatches = reset ? newBatches : allBatches.concat(newBatches);
+          // Show batches immediately
+          sortAndRenderBatches();
+          showLoader(false);
+
+          // Update pagination - if we got 20 batches, there might be more
+          hasMore = serverFilteredBatches.length === 20;
+          if (hasMore) {
+            currentPage++;
+          }
+        }
+      } catch (err) {
+        console.error("❌ Failed to load batches:", err);
+        showLoader(false);
+      } finally {
+        isLoading = false;
       }
     }
-    // --- PRIORITY LOADING: End ---
-    
-    // Use limit of 12 batches per page (like in TEST.HTML)
-    const query = currentQuery ? `&q=${encodeURIComponent(currentQuery)}` : "";
-    const res = await fetch(`${API_BASE}/api/batches?page=${currentPage}&limit=15${query}`);
-    const data = await res.json();
-    
-    let newBatches = [];
-    if (data.success && data.batches && data.batches.length > 0) {
-      newBatches = data.batches.map(b => ({
-        batchId: b._id,
-        name: b.name,
-        byName: b.byName,
-        image: b.previewImage || 'https://placehold.co/600x340/1a1a1a/ffffff?text=No+Image',
-        language: b.language,
-        exam: b.exam,
-        startDate: b.start_date,
-      }));
-    }
-    
-    // Combine and de-duplicate batches
-    const combinedBatches = [...favBatches, ...allBatches, ...newBatches];
-    const uniqueBatchesMap = new Map(combinedBatches.map(batch => [batch.batchId, batch]));
-    allBatches = Array.from(uniqueBatchesMap.values());
-    
-    // Sort and render batches (favorites first)
-    sortAndRenderBatches();
-    
-    // Update pagination state
-    if (newBatches.length === 0 || (data.totalPages && currentPage >= data.totalPages)) {
-      hasMore = false;
-      if (loadMoreBtnWrapper) loadMoreBtnWrapper.style.display = "none";
-    } else {
-      currentPage++;
-      if (loadMoreBtnWrapper) loadMoreBtnWrapper.style.display = "block";
-    }
-    
-    if (allBatches.length === 0) {
-      renderNoResults();
-    }
-    
-  } catch (err) {
-    console.error(" Failed to load batches:", err);
-  } finally {
-    isLoading = false;
-    showLoader(false);
-    if (loadMoreBtn) loadMoreBtn.disabled = false;
-  }
-}
+
+
+
 
     function renderBatches(batches, { append = false } = {}) {
       if (!append) main.innerHTML = "";
@@ -638,12 +719,7 @@
       todayWrapper.style.display = "none";
       backBtn.style.display = "none";
       searchInput.style.display = "block";
-  
-      // Show/hide load more button based on hasMore state
-      const loadMoreBtnWrapper = document.getElementById("loadMoreBatchesWrapper");
-      if (loadMoreBtnWrapper) {
-        loadMoreBtnWrapper.style.display = hasMore ? "block" : "none";
-      }
+      // loadMoreBtnWrapper.style.display = "block"; // Removed as we no longer have this button
 
       batches.forEach(batch => {
         appendCard(main, batch.name, batch.image, batch.batchId, () => {
@@ -656,7 +732,6 @@
     function renderNoResults() {
       main.innerHTML = `
     <div style="text-align:center; color:#666; padding:2rem;">
-      <p> No batches found.</p>
       <p>🔍 No batches found.</p>
     </div>
   `;
@@ -686,14 +761,6 @@
       currentQuery = searchInput.value.trim();
       loadBatches({ reset: true });
     }, 300));
-    
-    // 🎯 Load More Arenas button listener
-    const loadMoreBtn = document.getElementById("loadMoreBatchesBtn");
-    if (loadMoreBtn) {
-      loadMoreBtn.addEventListener("click", () => {
-        loadBatches();
-      });
-    }
 
     // Utility: debounce
     function debounce(fn, delay) {
@@ -715,7 +782,7 @@
       searchInput.style.display = "none";
       showLoader(true);
       try {
-        const res = await fetch(`${API_BASE}/api/batch/${encodeURIComponent(batchId)}`);
+        const res = await fetch(`${API_BASE}/batch/${encodeURIComponent(batchId)}/details`);
         const json = await res.json();
         const subs = (json.data && json.data.subjects) || [];
 
@@ -766,17 +833,20 @@
           appendCard(subjectsDiv, sub, () => {
             chapterPage = 1;
             chapterLoading = false;
-            currentSubjectId = sub.subjectId || sub._id;
+            
+            // Use the subject slug for API calls (existing code compatibility)
+            const subjectSlug = sub.slug || sub.subjectSlug || sub.subject.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+            // Use subject ID for new attachment-links endpoint (V3 API requires IDs)
+            currentSubjectId = sub._id || '';
+            currentSubjectSlug = subjectSlug; // Keep for compatibility with existing code
             currentSubjectName = sub.subject;
-            loadChapters(batchId, sub.slug);
+            loadChapters(batchId, subjectSlug);
           });
         });
 
-        const todayRes = await fetch(`${API_BASE}/api/batch/${encodeURIComponent(batchId)}/todays-schedule`);
-        const todayJson = await todayRes.json();
-        // Filter today's classes to show only live classes
-        // Filter today's classes to show only live classes
-        const todayClasses = (todayJson.data || []).filter(cls => cls.lectureType === "LIVE" || cls.lectureType === "RECORDED" || cls.lectureType === "CANCELLED");
+        // TODO: Add today's schedule endpoint to proxy when needed
+        // For now, we'll skip today's classes since the old endpoint needs proxy support
+        const todayClasses = [];
         const todayWrapper = document.getElementById("todayWrapper");
         const todayScrollContainer = document.getElementById("todayScrollContainer");
 
@@ -875,7 +945,7 @@
       }
     }
 
-    async function loadChapters(batchId, subjectSlug) {
+    async function loadChapters(batchId, subjectId) {
       const chaptersDiv = document.getElementById("chaptersDiv");
       const oldWrapper = document.getElementById("chapterLoadMoreWrapper");
       if (oldWrapper) oldWrapper.remove();
@@ -883,7 +953,7 @@
       if (chapterLoading) return;
 
       // Update URL to reflect current view
-      history.pushState({}, '', `?batch=${batchId}&subject=${subjectSlug}`);
+      history.pushState({}, '', `?batch=${batchId}&subject=${subjectId}`);
       chaptersDiv.innerHTML = "";
       clearAll();
       document.getElementById("subjects").style.display = "none";
@@ -893,10 +963,29 @@
       showLoader(true);
 
       currentBatchId = batchId;
-      currentSubjectSlug = subjectSlug;
+      currentSubjectSlug = subjectId; // Keep the variable name for compatibility
+      
+      // Ensure currentSubjectId is set (needed for attachment-links)
+      if (!currentSubjectId && currentBatchId && currentSubjectSlug) {
+        // Fetch subject ID based on batchId and subjectSlug
+        try {
+          const batchRes = await fetch(`${API_BASE}/batch/${currentBatchId}/details`);
+          const batchData = await batchRes.json();
+          const subjects = (batchData.data && batchData.data.subjects) || [];
+          const subject = subjects.find(sub => 
+            (sub.slug || sub.subjectSlug || sub.subject.toLowerCase().replace(/[^a-z0-9]+/g, '-')) === currentSubjectSlug
+          );
+          if (subject && subject._id) {
+            currentSubjectId = subject._id;
+            console.log('Retrieved subject ID from batch details:', currentSubjectId); // TEMP DEBUG
+          }
+        } catch (error) {
+          console.error('Error fetching subject ID:', error);
+        }
+      }
 
       try {
-        const res = await fetch(`${API_BASE}/api/batch/${batchId}/subject/${subjectSlug}/topics`);
+        const res = await fetch(`${API_BASE}/batch/${batchId}/subject/${subjectId}/topics?page=1&batchTagType=UNITS&limit=20`);
         const result = await res.json();
 
         const chapters = result.data || [];
@@ -920,9 +1009,17 @@
                 alert("Chapter ID missing. Cannot load lectures.");
                 return;
               }
-              pushView(() => loadChapters(batchId, subjectSlug));
+              pushView(() => loadChapters(batchId, subjectId));
               currentTopicName = ch.name;
-              loadLecturesContent(batchId, subjectSlug, ch._id);
+              
+              // Store both chapter slug (for v2 API) and tag ID (for v3 API)
+              const chapterSlug = ch.slug || ch.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+              const tagId = ch._id; // This is the actual tag ID needed for V3 API
+              
+              // DEBUG: Log chapter data to see what we're extracting
+              console.log('DEBUG chapter click:', { chapterName: ch.name, chapterSlug, tagId, fullChapter: ch });
+              
+              loadLecturesContent(batchId, subjectId, chapterSlug, "LECTURES", tagId);
             });
 
             chaptersDiv.appendChild(card);
@@ -942,69 +1039,164 @@
       }
     }
 
-    async function loadLecturesContent(batchId, subjectSlug, topicId, contentType = "vidoes") {
+    // HTML structure for the lecture section with tabs
+    /*
+    <div id="lectureSection" style="display: none;">
+      <div class="header">
+        <h2 id="topicTitle">Lectures</h2>
+        <div class="back-button" onclick="history.back()">
+          <i class="fas fa-arrow-left"></i>
+        </div>
+      </div>
+      
+      <div class="tabs">
+        <button id="tab-lectures" class="tab active" onclick="switchLectureTab('lectures')">Lectures</button>
+        <button id="tab-notes" class="tab" onclick="switchLectureTab('notes')">Notes</button>
+        <button id="tab-dppnotes" class="tab" onclick="switchLectureTab('dppnotes')">DPP Notes</button>
+        <button id="tab-dpplecture" class="tab" onclick="switchLectureTab('dpplecture')">DPP Videos</button>
+      </div>
+      
+      <div id="lectureContent" class="content-grid"></div>
+    </div>
+    */
+
+    // Function to switch between lecture tabs
+    function switchLectureTab(tab) {
+      // Updated mapping to use correct API contentType values
+      const typeMap = {
+        lectures: "LECTURES",    // Use LECTURES API type directly
+        notes: "ALL",          // Use ALL and filter for notes client-side
+        dppnotes: "ALL",       // Use ALL and filter for DPP notes client-side
+        dpplecture: "ALL"      // Use ALL and filter for DPP videos client-side
+      };
+
+      currentContentType = typeMap[tab] || "LECTURES";
+      currentTabType = tab; // Store current tab type for filtering
+
+      ["lectures", "notes", "dppnotes", "dpplecture"].forEach(t => {
+        const tabElement = document.getElementById("tab-" + t);
+        if (tabElement) {
+          tabElement.classList.remove("active");
+        }
+      });
+      
+      const activeTabElement = document.getElementById("tab-" + tab);
+      if (activeTabElement) {
+        activeTabElement.classList.add("active");
+      }
+
+      loadLecturesContent(currentBatchId, currentSubjectSlug, currentTopicId, currentContentType);
+    }
+
+    async function loadLecturesContent(batchId, subjectId, topicId, contentType = "LECTURES", tagId = null) {
       if (lectureLoading) return;
       lectureLoading = true;
 
-      history.pushState({}, '', `?batch=${batchId}&subject=${subjectSlug}&topic=${topicId}&type=${contentType}`);
+      history.pushState({}, '', `?batch=${batchId}&subject=${subjectId}&topic=${topicId}&type=${contentType}`);
       document.getElementById("lectureContent").innerHTML = "";
       searchInput.style.display = "none"; // Hide search input when viewing lectures
 
       show(document.getElementById("lectureSection"));
 
-      // Set default active tab based on content type
-      const tabMap = {
-        "vidoes": "lectures",
-        "notes": "notes",
-        "DppNotes": "dppnotes",
-        "DppVideos": "dpplecture"
-      };
-
-      const activeTab = tabMap[contentType] || "lectures";
-
-      // Remove active class from all tabs
-      ["lectures", "notes", "dppnotes", "dpplecture"].forEach(t => {
-        document.getElementById("tab-" + t).classList.remove("active");
-      });
-
-      // Set the appropriate tab as active
-      document.getElementById("tab-" + activeTab).classList.add("active");
-
       showLoader(true);
 
       currentBatchId = batchId;
-      currentSubjectSlug = subjectSlug;
-      currentTopicId = topicId;
+      currentSubjectSlug = subjectId; // Keep for compatibility
+      currentTopicId = topicId; // This is the slug for backward compatibility
+      currentTagId = tagId; // This is the actual tag ID needed for V3 API
       currentContentType = contentType;
+      
+      // DEBUG: Log what we received
+      console.log('DEBUG loadLecturesContent:', { batchId, subjectId, topicId, tagId, currentTagId });
+      
+      // Ensure currentSubjectId is set (needed for attachment-links)
+      if (!currentSubjectId && currentBatchId && currentSubjectSlug) {
+        // Fetch subject ID based on batchId and subjectSlug
+        try {
+          const batchRes = await fetch(`${API_BASE}/batch/${currentBatchId}/details`);
+          const batchData = await batchRes.json();
+          const subjects = (batchData.data && batchData.data.subjects) || [];
+          const subject = subjects.find(sub => 
+            (sub.slug || sub.subjectSlug || sub.subject.toLowerCase().replace(/[^a-z0-9]+/g, '-')) === currentSubjectSlug
+          );
+          if (subject && subject._id) {
+            currentSubjectId = subject._id;
+            console.log('Retrieved subject ID from batch details:', currentSubjectId); // TEMP DEBUG
+          }
+        } catch (error) {
+          console.error('Error fetching subject ID:', error);
+        }
+      }
 
-      const url = `${API_BASE}/api/batch/${batchId}/subject/${subjectSlug}/topic/${topicId}/all-contents?type=${contentType}`;
+      // Use the correct v2 API format with proper contentType values
+      // Map frontend tabs to v2 API contentType values
+      const contentTypeMap = {
+        lectures: "videos",      // v2 API uses "videos" for lectures
+        notes: "notes",         // v2 API uses "notes" for notes
+        dppnotes: "DppNotes",   // v2 API uses "DppNotes" for DPP notes
+        dpplecture: "videos"    // DPP videos might be "videos" or could be "DppVideos"
+      };
+      
+      const apiContentType = contentTypeMap[currentTabType] || "videos";
+      
+      // Get chapter slug from topicId - we need to convert the MongoDB ID to slug
+      // For now, we'll pass the topicId as tag parameter
+      const url = `${API_BASE}/batch/${batchId}/subject/${subjectId}/contents?page=1&contentType=${apiContentType}&tag=${topicId}`;
 
       try {
         const res = await fetch(url);
         const data = await res.json();
-        const items = data.data || [];
+        
+        // Handle v2 API response structure
+        const allItems = data.data || data.results || [];
+        console.log('API Response:', data); // Debug log
+        console.log('Items received:', allItems.length);
 
         const lectureContent = document.getElementById("lectureContent");
-        if (items.length === 0) {
-          lectureContent.innerHTML = `<div style="color: var(--text-muted); padding: 20px; text-align: center; background: rgba(255, 255, 255, 0.05); border-radius: 12px; margin: 10px; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.9rem;"><i class="fas fa-folder-open" style="margin-right: 8px; opacity: 0.7;"></i>No content found.</div>`;
+        if (!Array.isArray(allItems) || allItems.length === 0) {
+          lectureContent.innerHTML = `<div style="color: var(--text-muted); padding: 20px; text-align: center; background: rgba(255, 255, 255, 0.05); border-radius: 12px; margin: 10px; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.9rem;"><i class="fas fa-folder-open" style="margin-right: 8px; opacity: 0.7;"></i>No content found for this type.</div>`;
           return;
         }
 
-        // Process items while preserving parent scheduleId for homework items
+        // Since v2 API already filters by contentType, we just need to process all returned items
         let processedItems = [];
-        items.forEach(item => {
-          if (item.homeworkIds && item.homeworkIds.length > 0) {
-            // For each homework item, preserve the parent item's _id as scheduleId
-            item.homeworkIds.forEach(hwItem => {
+        const currentTab = currentTabType || "lectures";
+        
+        console.log('Current tab:', currentTab);
+        console.log('All items structure:', allItems[0]); // Debug: log first item structure
+        
+        // v2 API already filtered by contentType, so use all returned items
+        const filteredItems = allItems;
+        
+        // Check if we have any filtered items
+        if (filteredItems.length === 0) {
+          lectureContent.innerHTML = `<div style="color: var(--text-muted); padding: 20px; text-align: center; background: rgba(255, 255, 255, 0.05); border-radius: 12px; margin: 10px; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.9rem;"><i class="fas fa-folder-open" style="margin-right: 8px; opacity: 0.7;"></i>No content found for this tab.</div>`;
+          return;
+        }
+        
+        // Process items and expand homeworkIds array for notes/DPP
+        processedItems = [];
+        filteredItems.forEach(item => {
+          const itemData = item.data || item;
+          
+          if ((currentTab === "notes" || currentTab === "dppnotes") && itemData.homeworkIds && itemData.homeworkIds.length > 0) {
+            // For notes/DPP, create separate cards for each homework item
+            itemData.homeworkIds.forEach(homework => {
               processedItems.push({
-                ...hwItem,
-                scheduleId: item._id  // Parent item's _id is the scheduleId
+                ...item,
+                scheduleId: item._id || item.id,
+                data: item,
+                homework: homework, // Add homework data for easy access
+                _id: homework._id,  // Use homework ID for uniqueness
+                title: homework.topic || homework.name || homework.title || "Untitled"
               });
             });
           } else {
+            // For videos/lectures, use the main item
             processedItems.push({
               ...item,
-              scheduleId: item._id
+              scheduleId: item._id || item.id,
+              data: item
             });
           }
         });
@@ -1012,16 +1204,45 @@
         processedItems.forEach(item => {
           const div = document.createElement("div");
           div.className = "card";
-
-          if (contentType === "notes" || contentType === "DppNotes") {
-            let topicTitle = "Untitled Note";
-            if (item.topic) {
-              topicTitle = item.topic;
-            } else if (item.homeworkIds?.[0]?.topic) {
-              topicTitle = item.homeworkIds[0].topic;
+          
+          // Extract title from processed item structure
+          let topicTitle = "Untitled";
+          
+          if (currentTab === "notes" || currentTab === "dppnotes") {
+            // For notes/DPP, use the title we set during processing or homework data
+            if (item.title) {
+              topicTitle = item.title;
+            } else if (item.homework) {
+              const homework = item.homework;
+              if (homework.topic) {
+                topicTitle = homework.topic;
+              } else if (homework.name) {
+                topicTitle = homework.name;
+              } else if (homework.title) {
+                topicTitle = homework.title;
+              }
             }
-            const scheduleId = item.scheduleId; // Use the preserved scheduleId
-            const isNote = contentType === "notes";
+          } else {
+            // For videos/lectures, try common title fields
+            const itemData = item.data || item;
+            if (itemData.name) {
+              topicTitle = itemData.name;
+            } else if (itemData.title) {
+              topicTitle = itemData.title;
+            } else if (itemData.topic) {
+              topicTitle = itemData.topic;
+            } else if (item.name) {
+              topicTitle = item.name;
+            } else if (item.title) {
+              topicTitle = item.title;
+            } else if (item.topic) {
+              topicTitle = item.topic;
+            }
+          }
+
+          if (currentTab === "notes" || currentTab === "dppnotes") {
+            const scheduleId = item.scheduleId || item._id; // Use the preserved scheduleId
+            const isNote = currentTab === "notes";
             const cardClass = isNote ? "note-card" : "dpp-card";
             const iconClass = isNote ? "note-icon" : "dpp-icon";
             const contentClass = isNote ? "note-content" : "dpp-content";
@@ -1047,18 +1268,69 @@
     </div>
   `;
 
-            div.onclick = () => {
-              fetchAndOpenAttachments(currentBatchId, currentSubjectSlug, scheduleId);
+            div.onclick = async () => {
+              // Use V1 schedule details API endpoint to get valid attachment keys
+              try {
+                showLoader(true);
+                const scheduleId = item.scheduleId || item._id;
+                const subjectSlug = currentSubjectSlug; // Pass the subject slug for V1 API
+                
+                console.log('V1 API attachment-links request:', { scheduleId, subjectSlug, batchId: currentBatchId, subjectId: currentSubjectId });
+                
+                const res = await fetch(`${API_BASE}/batch/${currentBatchId}/subject/${currentSubjectId}/attachment-links?scheduleId=${scheduleId}&subjectSlug=${subjectSlug}`);
+                const data = await res.json();
+                
+                if (data.success && data.data && data.data.length > 0) {
+                  // Open each attachment with valid keys from V1 API
+                  data.data.forEach(att => {
+                    console.log('Opening PDF with V1 key:', att.url);
+                    window.open(att.url, '_blank');
+                  });
+                } else {
+                  // Fallback: try with v2 API data if V1 fails
+                  if (item.homework && item.homework.attachmentIds && item.homework.attachmentIds.length > 0) {
+                    console.log('Fallback: Using v2 API data (may have empty keys)');
+                    item.homework.attachmentIds.forEach(att => {
+                      const fileUrl = `${att.baseUrl}${att.key}`;
+                      window.open(fileUrl, '_blank');
+                    });
+                  } else {
+                    console.log('V1 API response:', data);
+                    alert('No attachments found for this item.');
+                  }
+                }
+              } catch (error) {
+                console.error('Error fetching attachment links:', error);
+                alert('Error loading attachments. Please try again.');
+              } finally {
+                showLoader(false);
+              }
             };
           }
           else {
-            const vid = item.videoDetails || item;
-            const title = item.topic || vid.name || "Untitled Video";
-            const image = vid.image || vid.thumbnail || "";
-            const mediaUrl = vid.hls_url || item.url || "";
-            const duration = vid.duration || "00:00:00";
+            const itemData = item.data || item;
+            const vid = itemData.videoDetails || itemData;
+            
+            // Debug: log the data structure
+            console.log('Item data structure:', {
+              itemData: itemData,
+              videoDetails: itemData.videoDetails,
+              topic: itemData.topic,
+              image: itemData.videoDetails?.image,
+              duration: itemData.videoDetails?.duration,
+              date: itemData.date,
+              startTime: itemData.startTime,
+              createdAt: itemData.videoDetails?.createdAt
+            });
+            
+            const title = itemData.topic || itemData.videoDetails?.name || "Untitled Video";
+            const image = itemData.videoDetails?.image || "";
+            const mediaUrl = itemData.videoDetails?.videoUrl || itemData.url || "";
+            const duration = itemData.videoDetails?.duration || "00:00:00";
 
-            const startTime = new Date(item.startTime);
+            // Use the date field or startTime, fallback to createdAt
+            const lectureDate = itemData.date || itemData.startTime || itemData.videoDetails?.createdAt;
+            const startTime = new Date(lectureDate);
             const formattedDate = startTime.toLocaleDateString('en-US', {
               year: 'numeric',
               month: 'short',
@@ -1094,12 +1366,13 @@
                 const isYouTube = finalUrl && (finalUrl.includes('youtube.com') || finalUrl.includes('youtu.be'));
                 if (isYouTube) return window.open(finalUrl, '_blank');
 
-                const realVid = item.videoDetails || item;
+                const itemData = item.data || item;
+                const realVid = itemData.videoDetails || itemData;
                 const params = new URLSearchParams({
                   batch: currentBatchId || 'Unknown Batch',
                   subject: currentSubjectSlug || 'Unknown Subject',
                   topic: currentTopicId || 'General',
-                  title: item.topic || realVid.name || ''
+                  title: itemData.topic || itemData.videoDetails?.name || ''
                 });
 
                 const resp = await fetch(`${API_BASE}/api/video/stream-info?${params}`);
@@ -1122,7 +1395,7 @@
                 // Try the new API endpoint as a third option
                 const fetchApi1 = async () => {
                   // First API endpoint (existing)
-                  const scheduleId = item._id;
+                  const scheduleId = itemData._id || item._id;
                   const res = await fetch(`${API_BASE}/api/url?batch_id=${currentBatchId}&schedule_id=${scheduleId}`);
                   const altData = await res.json();
 
@@ -1175,29 +1448,12 @@
                   throw new Error('API 3 did not provide valid video data.');
                 };
 
-                const fetchApi4 = async () => {
-                  // Fourth API endpoint (new) - using our proxy
-                  const scheduleId = item._id;
-                  const res = await fetch(`${API_BASE}/api/video-data-alt?batchId=${currentBatchId}&scheduleId=${scheduleId}`);
-                  const responseJson = await res.json();
-
-                  if (responseJson.success && responseJson.data && responseJson.iv) {
-                    const urlParams = new URLSearchParams({
-                      data: responseJson.data,
-                      iv: responseJson.iv
-                    });
-                    return { type: 'redirect', url: `player?${urlParams}` };
-                  }
-                  throw new Error('API 4 did not provide valid video data.');
-                };
-
                 // Run all API calls in parallel and get the first success
                 try {
                   const result = await Promise.any([
                     fetchApi1(),
                     fetchApi2(),
-                    fetchApi3(),
-                    fetchApi4()
+                    fetchApi3()
                   ]);
 
                   // Act on the first successful result
@@ -1210,11 +1466,11 @@
                 } catch (error) {
                   // This block executes only if ALL promises fail
                   console.error("All video sources failed to load:", error);
-                  alert("⚠️ Server Issue....");
+                  alert("⚠️ Video not available from any source.");
                 }
               } catch (err) {
                 console.error("Video load failed:", err);
-                alert("⚠️ Video failed to load...");
+                alert("⚠️ Failed to load video.");
               } finally {
                 showLoader(false);
               }
@@ -1265,22 +1521,23 @@
     }
 
     function switchLectureTab(tab) {
+      // Updated mapping to use correct API contentType values
       const typeMap = {
-        lectures: "vidoes",
-        notes: "notes",
-        dppnotes: "DppNotes",
-        dpplecture: "DppVideos"
+        lectures: "LECTURES",    // Use LECTURES API type directly
+        notes: "ALL",          // Use ALL and filter for notes client-side
+        dppnotes: "ALL",       // Use ALL and filter for DPP notes client-side
+        dpplecture: "ALL"      // Use ALL and filter for DPP videos client-side
       };
 
-      currentContentType = typeMap[tab] || "vidoes";
-
+      currentContentType = typeMap[tab] || "LECTURES";
+      currentTabType = tab; // Store current tab type for filtering
 
       ["lectures", "notes", "dppnotes", "dpplecture"].forEach(t => {
         document.getElementById("tab-" + t).classList.remove("active");
       });
       document.getElementById("tab-" + tab).classList.add("active");
 
-      loadLecturesContent(currentBatchId, currentSubjectSlug, currentTopicId, currentContentType);
+      loadLecturesContent(currentBatchId, currentSubjectSlug, currentTopicId, currentContentType, currentTagId);
     }
 
     backBtn.onclick = () => {
